@@ -594,6 +594,40 @@ export default function Checkout() {
                         </Form.Control.Feedback>
                       </Form.Group>
                     </Col>
+                    <Col md={12}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Địa chỉ *</Form.Label>
+                        <Form.Control
+                          name="street"
+                          placeholder="Số nhà, tên đường, phường/xã"
+                          {...guestFormik.getFieldProps("street")}
+                          isInvalid={
+                            guestFormik.touched.street &&
+                            guestFormik.errors.street
+                          }
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {guestFormik.errors.street}
+                        </Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
+                    <Col md={12}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Thành phố *</Form.Label>
+                        <Form.Control
+                          name="city"
+                          placeholder="Quận/Huyện, Tỉnh/Thành phố"
+                          {...guestFormik.getFieldProps("city")}
+                          isInvalid={
+                            guestFormik.touched.city &&
+                            guestFormik.errors.city
+                          }
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {guestFormik.errors.city}
+                        </Form.Control.Feedback>
+                      </Form.Group>
+                    </Col>
                   </Row>
                 </Form>
               )}

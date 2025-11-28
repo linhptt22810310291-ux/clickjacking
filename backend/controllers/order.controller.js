@@ -639,8 +639,9 @@ exports.getUserOrderDetailAdmin = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   const t = await db.sequelize.transaction();
   try {
+    // PostgreSQL doesn't support FOR UPDATE with LEFT OUTER JOIN
+    // So we need to query the order first without include, then get items separately
     const order = await db.Order.findByPk(req.params.id, {
-      include: [{ model: db.OrderItem, as: 'items' }],
       transaction: t,
       lock: t.LOCK.UPDATE
     });
@@ -664,9 +665,15 @@ exports.updateOrderStatus = async (req, res) => {
     order.Status = newStatus;
     await order.save({ transaction: t });
 
+    // Get order items separately for stock restoration
+    const orderItems = await db.OrderItem.findAll({
+      where: { OrderID: order.OrderID },
+      transaction: t
+    });
+
     // Hoàn tồn khi chuyển sang Cancelled và chưa Paid (giữ nguyên logic cũ)
     if (oldStatus !== 'Cancelled' && newStatus === 'Cancelled' && order.PaymentStatus !== 'Paid') {
-      for (const item of order.items) {
+      for (const item of orderItems) {
         if (!item.VariantID || !item.Quantity) continue;
         await db.ProductVariant.increment(
           { StockQuantity: item.Quantity },

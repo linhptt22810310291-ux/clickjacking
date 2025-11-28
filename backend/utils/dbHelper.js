@@ -98,7 +98,8 @@ const getTopProductsQuery = (successfulOrderStatus) => {
         return `
             SELECT 
                 p."ProductID", p."Name", pv."VariantID", pv."Size", pv."Color", 
-                p."Price", p."DiscountPercent", p."DiscountedPrice", 
+                p."Price", p."DiscountPercent",
+                ROUND(p."Price" * (1 - COALESCE(p."DiscountPercent", 0) / 100.0)) AS "DiscountedPrice",
                 SUM(qty) AS sold,
                 (
                     COALESCE(
@@ -115,7 +116,7 @@ const getTopProductsQuery = (successfulOrderStatus) => {
             ) AS "allItems"
             JOIN "ProductVariants" pv ON "allItems"."VariantID" = pv."VariantID"
             JOIN "Products" p ON pv."ProductID" = p."ProductID"
-            GROUP BY p."ProductID", p."Name", pv."VariantID", pv."Size", pv."Color", p."Price", p."DiscountPercent", p."DiscountedPrice"
+            GROUP BY p."ProductID", p."Name", pv."VariantID", pv."Size", pv."Color", p."Price", p."DiscountPercent"
             ORDER BY sold DESC
             LIMIT :limit OFFSET :offset
         `;

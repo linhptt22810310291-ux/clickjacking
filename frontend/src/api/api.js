@@ -1,10 +1,22 @@
 // src/api/api.js
 import axios from 'axios';
 
+// Determine the base URL based on environment
+const getBaseURL = () => {
+    if (process.env.REACT_APP_API_URL) {
+        return process.env.REACT_APP_API_URL;
+    }
+    // Check if we're on production (not localhost)
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return 'https://clickjacking-backend.onrender.com/api';
+    }
+    return 'http://localhost:5000/api';
+};
+
 // 1. Tạo instance với cấu hình cơ bản
 const api = axios.create({
-    // Ưu tiên lấy URL từ biến môi trường, nếu không có thì dùng localhost
-    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+    // Ưu tiên lấy URL từ biến môi trường, nếu không có thì dùng localhost hoặc production
+    baseURL: getBaseURL(),
     timeout: 30000, // ⏱️ Increase timeout to 30s
     // withCredentials: true removed - will add per-request for captcha only
     headers: {
