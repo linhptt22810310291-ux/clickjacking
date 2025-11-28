@@ -1,0 +1,197 @@
+'use strict';
+
+/**
+ * Auto-seeder for production database
+ * This runs automatically when the server starts if tables are empty
+ */
+
+const db = require('../models');
+const bcrypt = require('bcryptjs');
+
+const autoSeed = async () => {
+  console.log('🌱 Checking if database needs seeding...');
+  
+  try {
+    // Check if Users table is empty
+    const userCount = await db.User.count();
+    if (userCount > 0) {
+      console.log('✅ Database already has data, skipping auto-seed.');
+      return;
+    }
+
+    console.log('🌱 Database is empty, starting auto-seed...');
+
+    // --- 1. Seed Users ---
+    console.log('  → Seeding Users...');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPasswordAdmin = await bcrypt.hash('Linh2308@', salt);
+    const hashedPasswordUser = await bcrypt.hash('User123456', salt);
+
+    await db.User.bulkCreate([
+      {
+        Username: 'admin',
+        Email: 'admin@example.com',
+        Password: hashedPasswordAdmin,
+        Role: 'admin',
+        FullName: 'Nguyễn Văn Quản Trị',
+        Phone: '0901234567',
+        TwoFactorEnabled: false,
+        IsEmailVerified: true
+      },
+      {
+        Username: 'user1',
+        Email: 'user1@example.com',
+        Password: hashedPasswordUser,
+        Role: 'user',
+        FullName: 'Trần Thị Người Dùng',
+        Phone: '0912345678',
+        TwoFactorEnabled: false,
+        IsEmailVerified: true
+      }
+    ]);
+    console.log('  ✅ Users seeded');
+
+    // --- 2. Seed Categories ---
+    console.log('  → Seeding Categories...');
+    await db.Category.bulkCreate([
+      { Name: 'Giày Thể Thao Nam', Description: 'Giày thể thao dành cho nam', TargetGroup: 'Men', IsActive: true },
+      { Name: 'Giày Thể Thao Nữ', Description: 'Giày thể thao dành cho nữ', TargetGroup: 'Women', IsActive: true },
+      { Name: 'Giày Công Sở Nam', Description: 'Giày công sở dành cho nam', TargetGroup: 'Men', IsActive: true },
+      { Name: 'Giày Công Sở Nữ', Description: 'Giày công sở dành cho nữ', TargetGroup: 'Women', IsActive: true },
+      { Name: 'Giày Sandal Nam', Description: 'Giày sandal dành cho nam', TargetGroup: 'Men', IsActive: true },
+      { Name: 'Giày Sandal Nữ', Description: 'Giày sandal dành cho nữ', TargetGroup: 'Women', IsActive: true },
+      { Name: 'Sneaker Unisex', Description: 'Sneaker dành cho cả nam và nữ', TargetGroup: 'Unisex', IsActive: true },
+    ]);
+    console.log('  ✅ Categories seeded');
+
+    // --- 3. Seed Products ---
+    console.log('  → Seeding Products...');
+    const categories = await db.Category.findAll();
+    const catMap = {};
+    categories.forEach(c => { catMap[c.Name] = c.CategoryID; });
+
+    const products = [
+      // Sport Men
+      { Name: 'Giày Thể Thao Nam Sport 01', Description: 'Giày thể thao nam phong cách hiện đại', Price: 2500000, DiscountPercent: 10, CategoryID: catMap['Giày Thể Thao Nam'] },
+      { Name: 'Giày Thể Thao Nam Sport 02', Description: 'Giày thể thao nam thoải mái', Price: 2600000, DiscountPercent: 5, CategoryID: catMap['Giày Thể Thao Nam'] },
+      // Sport Women
+      { Name: 'Giày Thể Thao Nữ Sport 01', Description: 'Giày thể thao nữ phong cách', Price: 2400000, DiscountPercent: 15, CategoryID: catMap['Giày Thể Thao Nữ'] },
+      { Name: 'Giày Thể Thao Nữ Sport 02', Description: 'Giày thể thao nữ năng động', Price: 2300000, DiscountPercent: 10, CategoryID: catMap['Giày Thể Thao Nữ'] },
+      // Office Men
+      { Name: 'Giày Công Sở Nam Office 01', Description: 'Giày công sở nam lịch lãm', Price: 1800000, DiscountPercent: 5, CategoryID: catMap['Giày Công Sở Nam'] },
+      { Name: 'Giày Công Sở Nam Office 02', Description: 'Giày công sở nam sang trọng', Price: 1900000, DiscountPercent: 0, CategoryID: catMap['Giày Công Sở Nam'] },
+      // Office Women
+      { Name: 'Giày Công Sở Nữ Office 01', Description: 'Giày công sở nữ thanh lịch', Price: 1600000, DiscountPercent: 10, CategoryID: catMap['Giày Công Sở Nữ'] },
+      { Name: 'Giày Công Sở Nữ Office 02', Description: 'Giày công sở nữ cao cấp', Price: 1700000, DiscountPercent: 5, CategoryID: catMap['Giày Công Sở Nữ'] },
+      // Sandal
+      { Name: 'Sandal Nam Casual 01', Description: 'Sandal nam thoải mái', Price: 800000, DiscountPercent: 20, CategoryID: catMap['Giày Sandal Nam'] },
+      { Name: 'Sandal Nữ Casual 01', Description: 'Sandal nữ thời trang', Price: 750000, DiscountPercent: 15, CategoryID: catMap['Giày Sandal Nữ'] },
+      // Sneaker
+      { Name: 'Sneaker Unisex Classic 01', Description: 'Sneaker unisex phong cách', Price: 2200000, DiscountPercent: 10, CategoryID: catMap['Sneaker Unisex'] },
+      { Name: 'Sneaker Unisex Modern 02', Description: 'Sneaker unisex hiện đại', Price: 2400000, DiscountPercent: 5, CategoryID: catMap['Sneaker Unisex'] },
+    ];
+    
+    await db.Product.bulkCreate(products);
+    console.log('  ✅ Products seeded');
+
+    // --- 4. Seed Product Variants ---
+    console.log('  → Seeding Product Variants...');
+    const allProducts = await db.Product.findAll();
+    const variants = [];
+    
+    allProducts.forEach((prod, idx) => {
+      const sizes = prod.CategoryID === catMap['Giày Thể Thao Nữ'] || prod.CategoryID === catMap['Giày Công Sở Nữ'] || prod.CategoryID === catMap['Giày Sandal Nữ']
+        ? ['36', '37', '38', '39']
+        : ['40', '41', '42', '43'];
+      
+      sizes.forEach(size => {
+        ['Đen', 'Trắng'].forEach(color => {
+          variants.push({
+            ProductID: prod.ProductID,
+            Size: size,
+            Color: color,
+            StockQuantity: 10,
+            SKU: `SKU-${prod.ProductID}-${size}-${color === 'Đen' ? 'BLK' : 'WHT'}`,
+            IsActive: true
+          });
+        });
+      });
+    });
+    
+    await db.ProductVariant.bulkCreate(variants);
+    console.log('  ✅ Product Variants seeded');
+
+    // --- 5. Seed Product Images (using placeholder URLs) ---
+    console.log('  → Seeding Product Images...');
+    const allVariants = await db.ProductVariant.findAll({ include: ['product'] });
+    const images = [];
+    
+    // Use placeholder images from a free service
+    const placeholderBase = 'https://via.placeholder.com/400x400.png?text=';
+    
+    allVariants.forEach((variant, idx) => {
+      const productName = encodeURIComponent(variant.product?.Name?.substring(0, 15) || 'Shoe');
+      images.push({
+        ProductID: variant.ProductID,
+        VariantID: variant.VariantID,
+        ImageURL: `${placeholderBase}${productName}+${variant.Color}`,
+        IsDefault: variant.Color === 'Đen'
+      });
+    });
+    
+    await db.ProductImage.bulkCreate(images);
+    console.log('  ✅ Product Images seeded');
+
+    // --- 6. Seed Payment Methods ---
+    console.log('  → Seeding Payment Methods...');
+    await db.PaymentMethod.bulkCreate([
+      { Code: 'COD', Name: 'Thanh toán khi nhận hàng', Type: 'OFFLINE', IsActive: true },
+      { Code: 'VNPAY', Name: 'Thanh toán qua VNPay', Type: 'ONLINE', Provider: 'VNPay', IsActive: true },
+    ]);
+    console.log('  ✅ Payment Methods seeded');
+
+    // --- 7. Seed Shipping Providers ---
+    console.log('  → Seeding Shipping Providers...');
+    await db.ShippingProvider.bulkCreate([
+      { Code: 'STANDARD', Name: 'Giao hàng tiêu chuẩn', Fee: 30000, IsActive: true },
+      { Code: 'EXPRESS', Name: 'Giao hàng nhanh', Fee: 50000, IsActive: true },
+    ]);
+    console.log('  ✅ Shipping Providers seeded');
+
+    // --- 8. Seed Blogs ---
+    console.log('  → Seeding Blogs...');
+    await db.Blog.bulkCreate([
+      {
+        Title: 'Hướng dẫn chọn giày phù hợp',
+        Content: 'Việc chọn giày phù hợp rất quan trọng để bảo vệ đôi chân của bạn. Đầu tiên, hãy đo kích thước chân chính xác. Thử giày vào buổi chiều khi chân đã giãn nở. Đảm bảo có khoảng trống 1cm ở mũi giày...',
+        Author: 'Admin',
+        ImageURL: 'https://via.placeholder.com/800x400.png?text=Blog+1',
+        IsActive: true
+      },
+      {
+        Title: 'Xu hướng giày 2025',
+        Content: 'Năm 2025 chứng kiến sự trở lại của phong cách retro với sneaker chunky và giày cao gót block heel. Màu sắc pastel và earth tone vẫn được ưa chuộng...',
+        Author: 'Admin',
+        ImageURL: 'https://via.placeholder.com/800x400.png?text=Blog+2',
+        IsActive: true
+      },
+      {
+        Title: 'Cách bảo quản giày da',
+        Content: 'Giày da cần được bảo quản đúng cách để giữ được độ bền. Hãy lau sạch sau mỗi lần sử dụng, dùng xi đánh giày định kỳ, và bảo quản nơi khô ráo thoáng mát...',
+        Author: 'Admin',
+        ImageURL: 'https://via.placeholder.com/800x400.png?text=Blog+3',
+        IsActive: true
+      }
+    ]);
+    console.log('  ✅ Blogs seeded');
+
+    console.log('🎉 Auto-seed completed successfully!');
+    
+  } catch (error) {
+    console.error('❌ Auto-seed failed:', error.message);
+    console.error(error.stack);
+    // Don't throw - let server continue even if seed fails
+  }
+};
+
+module.exports = autoSeed;

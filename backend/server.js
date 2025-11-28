@@ -608,6 +608,17 @@ db.sequelize.authenticate()
       });
     }
   })
+  .then(async () => {
+    // Auto-seed database if empty (production only)
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const autoSeed = require('./scripts/autoSeed');
+        await autoSeed();
+      } catch (err) {
+        console.error('⚠️ Auto-seed error (non-fatal):', err.message);
+      }
+    }
+  })
   .then(() => {
     app.listen(PORT, () => {
       logger.info(`🚀 Backend đang chạy tại http://localhost:${PORT}`);
