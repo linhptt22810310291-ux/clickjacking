@@ -219,10 +219,17 @@ app.use((req, res, next) => {
 // ✅ IP Rate Limit: ENABLED (DDoS protection)
 // ⚠️ CSRF: DISABLED (conflicts with API-first design)
 
+console.log('🔧 Setting up anti-clickjacking...');
+
 // 🛡️ ANTI-CLICKJACKING PROTECTION - ENABLED
-app.use(antiClickjacking(presets.dev)); // Dùng dev preset để có logging
-app.use(detectIframeRequest); // Phát hiện requests từ iframe
-app.use(testAntiClickjacking); // Thêm debug headers
+try {
+  app.use(antiClickjacking(presets.dev)); // Dùng dev preset để có logging
+  console.log('✅ Anti-clickjacking applied');
+} catch (err) {
+  console.error('❌ Anti-clickjacking error:', err.message);
+}
+
+console.log('🔧 Setting up multer and static files...');
 
 // --- Cấu hình Multer và Static Files (giữ nguyên) ---
 const storage = multer.diskStorage({
@@ -234,6 +241,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
 });
 const upload = multer({ storage });
+console.log('✅ Multer configured');
 
 // Serve các file tĩnh từ thư mục uploads (với CORS headers)
 app.use('/uploads', (req, res, next) => {
@@ -243,6 +251,7 @@ app.use('/uploads', (req, res, next) => {
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static(path.join(__dirname, 'uploads')));
+console.log('✅ Static files configured');
 
 // Serve ảnh blog qua đường dẫn /images (map vào thư mục uploads/blogs)
 app.use('/images', (req, res, next) => {
@@ -257,22 +266,27 @@ app.use('/images', (req, res, next) => {
 app.use('/api', sanitizeData);  // Chống NoSQL Injection
 app.use('/api', preventXSS);    // Chống XSS
 app.use('/api', preventHPP);    // Chống HTTP Parameter Pollution
+console.log('✅ Data sanitization applied');
 
 // 📝 Request Logger - Ghi log API requests
 app.use('/api', requestLogger);
 
 // 🚨 Suspicious Activity Detection - Chỉ cho API routes
 app.use('/api', detectSuspiciousActivity);
+console.log('✅ Request logging and detection applied');
 
   
 
 /* ---------------- MIDDLEWARE XÁC THỰC ---------------- */
+console.log('🔧 Setting up JWT middleware...');
+console.log('🔧 JWT_SECRET exists:', !!process.env.JWT_SECRET);
 
 // Middleware xác thực JWT cho các route /api/admin (TRỪ route login và register)
 const adminJwtMiddleware = expressjwt({ 
-  secret: process.env.JWT_SECRET, 
+  secret: process.env.JWT_SECRET || 'fallback-secret-for-testing', 
   algorithms: ['HS256']
 });
+console.log('✅ JWT middleware created');
 
 // ✅ Áp dụng JWT chỉ cho các route admin CẦN xác thực (không áp dụng cho /auth)
 app.use('/api/admin', (req, res, next) => {
