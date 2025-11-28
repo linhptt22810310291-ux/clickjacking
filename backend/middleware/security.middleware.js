@@ -174,6 +174,14 @@ const getRateLimitStats = () => ({
   recentLogs: rateLimitStats.recentLogs
 });
 
+// 🆕 Reset stats function (cho emergency unblock)
+const resetStats = () => {
+  rateLimitStats.totalBlocked = 0;
+  rateLimitStats.blockedIPs.clear();
+  rateLimitStats.recentLogs = [];
+  console.log('🔄 Rate limit stats have been reset');
+};
+
 // ============================================
 // 🧹 DATA SANITIZATION - Chống Injection
 // ============================================
@@ -456,4 +464,5 @@ module.exports = {
   
   // 🆕 Rate limit stats (cho dashboard)
   getRateLimitStats,
+  resetStats,
 };

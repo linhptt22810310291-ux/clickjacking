@@ -10,14 +10,83 @@ const path = require('path');
 const logger = require('../../utils/logger');
 
 // 🆕 Import từ security.middleware để lấy rate limit stats
-const { getRateLimitStats } = require('../../middleware/security.middleware');
+const { getRateLimitStats, resetStats: resetRateLimitStats } = require('../../middleware/security.middleware');
 
 // 🆕 Import từ firewall.middleware để lấy firewall stats
-const { getFirewallStats } = require('../../middleware/firewall.middleware');
+const { getFirewallStats, unblockIP, getBlockedIPs } = require('../../middleware/firewall.middleware');
 
 // Middleware: Kiểm tra admin (giả định bạn đã có middleware này)
 const checkAdmin = require('../../middleware/checkAdmin');
 const authenticateToken = require('../../middleware/auth.middleware');
+
+/**
+ * 🆘 EMERGENCY UNBLOCK - Route công khai để unblock IP khi bị khóa
+ * POST /api/security/emergency-unblock
+ * Yêu cầu secret key để bảo vệ
+ */
+router.post('/emergency-unblock', async (req, res) => {
+  try {
+    const { secretKey, ip } = req.body;
+    
+    // Secret key để bảo vệ - đặt trong ENV hoặc hardcode tạm
+    const EMERGENCY_SECRET = process.env.EMERGENCY_UNBLOCK_SECRET || 'LilyShoes2024Emergency!';
+    
+    if (secretKey !== EMERGENCY_SECRET) {
+      return res.status(403).json({
+        success: false,
+        error: 'Invalid secret key'
+      });
+    }
+    
+    // Nếu không truyền IP, lấy IP của người gọi
+    const targetIP = ip || req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim();
+    
+    // Unblock IP
+    unblockIP(targetIP);
+    
+    // Reset rate limit stats
+    if (typeof resetRateLimitStats === 'function') {
+      resetRateLimitStats();
+    }
+    
+    logger.securityEvent('Emergency IP unblock', {
+      unblockedIP: targetIP,
+      timestamp: new Date().toISOString()
+    });
+    
+    res.json({
+      success: true,
+      message: `IP ${targetIP} has been unblocked`,
+      unblockedIP: targetIP
+    });
+  } catch (error) {
+    logger.error('Emergency unblock failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to unblock IP'
+    });
+  }
+});
+
+/**
+ * GET /api/security/my-ip
+ * Xem IP hiện tại của bạn (để biết IP nào đang bị block)
+ */
+router.get('/my-ip', (req, res) => {
+  const clientIP = req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  const blockedIPs = getBlockedIPs ? getBlockedIPs() : [];
+  const isBlocked = blockedIPs.includes(clientIP);
+  
+  res.json({
+    success: true,
+    data: {
+      yourIP: clientIP,
+      isBlocked,
+      blockedIPs: blockedIPs,
+      timestamp: new Date().toISOString()
+    }
+  });
+});
 
 /**
  * GET /api/security/stats

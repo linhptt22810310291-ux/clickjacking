@@ -39,7 +39,7 @@ module.exports = {
     // Login endpoint - chống brute force
     login: {
       windowMs: 15 * 60 * 1000,
-      max: 5, // Chỉ 5 lần đăng nhập trong 15 phút
+      max: 15, // Chỉ 5 lần đăng nhập trong 15 phút
       message: 'Quá nhiều lần đăng nhập thất bại, vui lòng thử lại sau 15 phút.',
     },
     // Đăng ký tài khoản
