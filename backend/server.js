@@ -53,30 +53,73 @@ const logger = {
   debug: (...args) => console.log('[DEBUG]', ...args)
 };
 
-// 🛡️ ANTI-CLICKJACKING MIDDLEWARE
-const { antiClickjacking, presets, detectIframeRequest, testAntiClickjacking } = require('./middleware/antiClickjacking');
+console.log('✅ Logger created');
 
-// 🛡️ ADVANCED SECURITY MIDDLEWARE
-const {
-  helmetMiddleware,
-  enforceHTTPS,
-  additionalSecurityHeaders,
-  rateLimiters,
-  sanitizeData,
-  preventXSS,
-  preventHPP,
-  detectSuspiciousActivity,
-  requestLogger,
-} = require('./middleware/security.middleware');
+// Load middleware with error handling
+let antiClickjacking, presets, helmetMiddleware, enforceHTTPS, additionalSecurityHeaders;
+let rateLimiters, sanitizeData, preventXSS, preventHPP, detectSuspiciousActivity, requestLogger;
+let sessionManager, captchaSession, generateCaptcha, verifyCaptcha;
+let csrfProtection, verifyCsrfToken, getCsrfToken, firewallMiddleware, ipRateLimit;
+let verifyEmailToken, resendVerificationEmail;
 
-// 🔐 SESSION & MFA MIDDLEWARE
-const { sessionManager } = require('./middleware/session.middleware');
+try {
+  // 🛡️ ANTI-CLICKJACKING MIDDLEWARE
+  const acModule = require('./middleware/antiClickjacking');
+  antiClickjacking = acModule.antiClickjacking;
+  presets = acModule.presets;
+  console.log('✅ Anti-clickjacking loaded');
 
-// 🔐 NEW SECURITY FEATURES
-const { sessionMiddleware: captchaSession, generateCaptcha, verifyCaptcha } = require('./middleware/captcha.middleware');
-const { csrfProtection, verifyCsrfToken, getCsrfToken } = require('./middleware/csrf.middleware');
-const { firewallMiddleware, ipRateLimit } = require('./middleware/firewall.middleware');
-const { verifyEmailToken, resendVerificationEmail } = require('./services/emailVerification.service');
+  // 🛡️ ADVANCED SECURITY MIDDLEWARE
+  const secModule = require('./middleware/security.middleware');
+  helmetMiddleware = secModule.helmetMiddleware;
+  enforceHTTPS = secModule.enforceHTTPS;
+  additionalSecurityHeaders = secModule.additionalSecurityHeaders;
+  rateLimiters = secModule.rateLimiters;
+  sanitizeData = secModule.sanitizeData;
+  preventXSS = secModule.preventXSS;
+  preventHPP = secModule.preventHPP;
+  detectSuspiciousActivity = secModule.detectSuspiciousActivity;
+  requestLogger = secModule.requestLogger;
+  console.log('✅ Security middleware loaded');
+
+  // 🔐 SESSION & MFA MIDDLEWARE
+  const sessModule = require('./middleware/session.middleware');
+  sessionManager = sessModule.sessionManager;
+  console.log('✅ Session middleware loaded');
+
+  // 🔐 CAPTCHA
+  const captchaModule = require('./middleware/captcha.middleware');
+  captchaSession = captchaModule.sessionMiddleware;
+  generateCaptcha = captchaModule.generateCaptcha;
+  verifyCaptcha = captchaModule.verifyCaptcha;
+  console.log('✅ Captcha middleware loaded');
+
+  // 🔐 CSRF
+  const csrfModule = require('./middleware/csrf.middleware');
+  csrfProtection = csrfModule.csrfProtection;
+  verifyCsrfToken = csrfModule.verifyCsrfToken;
+  getCsrfToken = csrfModule.getCsrfToken;
+  console.log('✅ CSRF middleware loaded');
+
+  // 🔥 FIREWALL
+  const fwModule = require('./middleware/firewall.middleware');
+  firewallMiddleware = fwModule.firewallMiddleware;
+  ipRateLimit = fwModule.ipRateLimit;
+  console.log('✅ Firewall middleware loaded');
+
+  // 📧 EMAIL VERIFICATION
+  const emailModule = require('./services/emailVerification.service');
+  verifyEmailToken = emailModule.verifyEmailToken;
+  resendVerificationEmail = emailModule.resendVerificationEmail;
+  console.log('✅ Email service loaded');
+
+} catch (err) {
+  console.error('❌ Error loading middleware:', err.message);
+  console.error(err.stack);
+  process.exit(1);
+}
+
+console.log('✅ All middleware loaded successfully');
 
 const app = express();
 
