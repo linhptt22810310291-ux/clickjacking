@@ -18,58 +18,66 @@ const autoSeed = async () => {
     // Force reseed if FORCE_RESEED=true
     const forceReseed = process.env.FORCE_RESEED === 'true';
     
-    // Check if Users table is empty
-    const userCount = await db.User.count();
-    if (userCount > 0 && !forceReseed) {
-      console.log('✅ Database already has data, skipping auto-seed.');
+    // Check if Products table has data (better indicator)
+    const productCount = await db.Product.count();
+    if (productCount > 0 && !forceReseed) {
+      console.log('✅ Database already has product data, skipping auto-seed.');
       return;
     }
 
-    if (forceReseed && userCount > 0) {
+    if (forceReseed) {
       console.log('🔄 FORCE_RESEED enabled - clearing existing data...');
       // Delete in correct order to respect foreign keys
-      await db.ProductImage.destroy({ where: {}, truncate: true, cascade: true });
-      await db.ProductVariant.destroy({ where: {}, truncate: true, cascade: true });
-      await db.Product.destroy({ where: {}, truncate: true, cascade: true });
-      await db.Category.destroy({ where: {}, truncate: true, cascade: true });
-      await db.Blog.destroy({ where: {}, truncate: true, cascade: true });
-      await db.PaymentMethod.destroy({ where: {}, truncate: true, cascade: true });
-      await db.ShippingProvider.destroy({ where: {}, truncate: true, cascade: true });
-      // Keep users
-      console.log('  ✅ Old data cleared (users kept)');
+      try {
+        await db.ProductImage.destroy({ where: {}, force: true });
+        await db.ProductVariant.destroy({ where: {}, force: true });
+        await db.Product.destroy({ where: {}, force: true });
+        await db.Category.destroy({ where: {}, force: true });
+        await db.Blog.destroy({ where: {}, force: true });
+        await db.PaymentMethod.destroy({ where: {}, force: true });
+        await db.ShippingProvider.destroy({ where: {}, force: true });
+        console.log('  ✅ Old data cleared');
+      } catch (e) {
+        console.log('  ⚠️ Clear error:', e.message);
+      }
     }
 
     console.log('🌱 Starting auto-seed...');
 
-    // --- 1. Seed Users ---
-    console.log('  → Seeding Users...');
-    const salt = await bcrypt.genSalt(10);
-    const hashedPasswordAdmin = await bcrypt.hash('Linh2308@', salt);
-    const hashedPasswordUser = await bcrypt.hash('User123456', salt);
+    // --- 1. Check/Seed Users ---
+    const userCount = await db.User.count();
+    if (userCount === 0) {
+      console.log('  → Seeding Users...');
+      const salt = await bcrypt.genSalt(10);
+      const hashedPasswordAdmin = await bcrypt.hash('Linh2308@', salt);
+      const hashedPasswordUser = await bcrypt.hash('User123456', salt);
 
-    await db.User.bulkCreate([
-      {
-        Username: 'admin',
-        Email: 'admin@example.com',
-        Password: hashedPasswordAdmin,
-        Role: 'admin',
-        FullName: 'Nguyễn Văn Quản Trị',
-        Phone: '0901234567',
-        TwoFactorEnabled: false,
-        IsEmailVerified: true
-      },
-      {
-        Username: 'user1',
-        Email: 'user1@example.com',
-        Password: hashedPasswordUser,
-        Role: 'user',
-        FullName: 'Trần Thị Người Dùng',
-        Phone: '0912345678',
-        TwoFactorEnabled: false,
-        IsEmailVerified: true
-      }
-    ]);
-    console.log('  ✅ Users seeded');
+      await db.User.bulkCreate([
+        {
+          Username: 'admin',
+          Email: 'admin@example.com',
+          Password: hashedPasswordAdmin,
+          Role: 'admin',
+          FullName: 'Nguyễn Văn Quản Trị',
+          Phone: '0901234567',
+          TwoFactorEnabled: false,
+          IsEmailVerified: true
+        },
+        {
+          Username: 'user1',
+          Email: 'user1@example.com',
+          Password: hashedPasswordUser,
+          Role: 'user',
+          FullName: 'Trần Thị Người Dùng',
+          Phone: '0912345678',
+          TwoFactorEnabled: false,
+          IsEmailVerified: true
+        }
+      ]);
+      console.log('  ✅ Users seeded');
+    } else {
+      console.log('  ✅ Users already exist, skipping...');
+    }
 
     // --- 2. Seed Categories ---
     console.log('  → Seeding Categories...');
