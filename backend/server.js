@@ -333,14 +333,22 @@ console.log('✅ Wishlist JWT middleware created');
 console.log('🔧 Setting up Passport...');
 app.use(passport.initialize());
 
+// Production URLs (dùng khi không có env vars)
+const isProduction = process.env.NODE_ENV === 'production';
+const PROD_BACKEND_URL = 'https://clickjacking-backend.onrender.com';
+const PROD_FRONTEND_URL = 'https://clickjacking-frontend.onrender.com';
+
 // Chỉ setup Google OAuth nếu có credentials
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  const googleCallbackURL = process.env.GOOGLE_CALLBACK_URL || 
+    (isProduction ? `${PROD_BACKEND_URL}/auth/google/callback` : 'http://localhost:5000/auth/google/callback');
+  
   passport.use(
     new GoogleStrategy(
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/auth/google/callback',
+        callbackURL: googleCallbackURL,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
@@ -370,12 +378,15 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 
 // Chỉ setup Facebook OAuth nếu có credentials
 if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
+  const facebookCallbackURL = process.env.FACEBOOK_CALLBACK_URL || 
+    (isProduction ? `${PROD_BACKEND_URL}/auth/facebook/callback` : 'http://localhost:5000/auth/facebook/callback');
+  
   passport.use(
     new FacebookStrategy(
       {
         clientID: process.env.FACEBOOK_CLIENT_ID,
         clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-        callbackURL: process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:5000/auth/facebook/callback',
+        callbackURL: facebookCallbackURL,
         profileFields: ["id", "displayName", "photos", "email"],
       },
       async (accessToken, refreshToken, profile, done) => {
@@ -554,7 +565,7 @@ app.get("/api/current_user", authenticateUser, async (req, res) => {
 
 
 /* ---------------- OAUTH ROUTES (REFACTORED) ---------------- */
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || (isProduction ? PROD_FRONTEND_URL : 'http://localhost:3000');
 
 app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"], session: false }));
 app.get("/auth/google/callback", passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login`, session: false }), (req, res) => {

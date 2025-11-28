@@ -9,16 +9,17 @@ const session = require('express-session');
  */
 
 // Session configuration cho CAPTCHA
+const isProduction = process.env.NODE_ENV === 'production';
 const sessionMiddleware = session({
   secret: process.env.JWT_SECRET || 'dev_secret', // Use same secret as main app
   resave: false,
   saveUninitialized: true,
   name: 'captcha.sid', // Different name to avoid conflicts
   cookie: {
-    secure: false, // Allow HTTP in development
+    secure: isProduction, // HTTPS only in production
     httpOnly: true,
     maxAge: 10 * 60 * 1000, // 10 phút
-    sameSite: 'lax',
+    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production
   },
 });
 

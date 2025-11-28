@@ -29,6 +29,12 @@ api.interceptors.request.use(
 // 3. RESPONSE INTERCEPTOR: Xử lý lỗi toàn cục (ví dụ: 401 Unauthorized)
 api.interceptors.response.use(
     (response) => {
+        // Lưu session ID từ backend response (cho guest cart)
+        const sessionId = response.headers['x-session-id'];
+        if (sessionId && !localStorage.getItem('token')) {
+            localStorage.setItem('guest_session_id', sessionId);
+            console.log('💾 Saved guest session ID:', sessionId);
+        }
         // Nếu response thành công, trả về nguyên vẹn
         return response;
     },

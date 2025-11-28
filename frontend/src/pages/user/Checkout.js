@@ -369,8 +369,22 @@ export default function Checkout() {
     if (!items.length) return toast.error("Giỏ hàng trống.");
     if (isUser && !selectedAddressId)
       return toast.error("Vui lòng chọn địa chỉ.");
-    if (!isUser && !guestFormik.isValid)
-      return toast.error("Vui lòng điền đầy đủ thông tin nhận hàng.");
+    
+    // Validate guest form properly - touch all fields first
+    if (!isUser) {
+      const errors = await guestFormik.validateForm();
+      if (Object.keys(errors).length > 0) {
+        guestFormik.setTouched({
+          fullName: true,
+          phone: true,
+          email: true,
+          street: true,
+          city: true
+        });
+        return toast.error("Vui lòng điền đầy đủ thông tin nhận hàng.");
+      }
+    }
+    
     if (!shippingProviderId)
       return toast.error("Vui lòng chọn đơn vị vận chuyển.");
     if (!paymentMethod)
