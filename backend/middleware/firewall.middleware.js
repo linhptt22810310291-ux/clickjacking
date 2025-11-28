@@ -120,20 +120,6 @@ const trackSuspiciousIP = (ip) => {
 const firewallMiddleware = (req, res, next) => {
   const ip = getClientIP(req);
 
-  // 🆘 EMERGENCY & MONITORING ROUTES - Bypass IP block check only
-  // Các route này vẫn phải qua các kiểm tra suspicious patterns
-  const bypassRoutes = [
-    '/api/security/emergency-unblock',
-    '/api/security/my-ip',
-    '/api/security/stats'
-  ];
-  
-  if (bypassRoutes.includes(req.path)) {
-    console.log(`🔓 Bypass route accessed from IP: ${ip} - ${req.path}`);
-    req.clientIP = ip;
-    return next();
-  }
-
   // 🛡️ WHITELIST - Cấu hình theo môi trường
   // Development: Whitelist localhost để test
   // Production: Chỉ whitelist IP của server nếu cần
@@ -150,9 +136,18 @@ const firewallMiddleware = (req, res, next) => {
   
   const isWhitelisted = whitelist.includes(ip);
 
+  // 🆘 CHỈ CHO PHÉP emergency-unblock BYPASS (để admin tự unblock khi cần)
+  // Các route khác như stats, my-ip sẽ BỊ CHẶN nếu IP đã bị block
+  if (req.path === '/api/security/emergency-unblock') {
+    console.log(`🆘 Emergency unblock route accessed from IP: ${ip}`);
+    req.clientIP = ip;
+    return next();
+  }
+
   // Check if IP is blocked (trừ whitelist)
+  // ❌ KHÔNG CÓ BYPASS - IP bị block sẽ bị chặn hoàn toàn mọi request
   if (!isWhitelisted && isIPBlocked(ip)) {
-    console.warn(`🚫 Blocked IP attempted access: ${ip}`);
+    console.warn(`🚫 Blocked IP attempted access: ${ip} - ${req.path}`);
     
     // 🆕 Track vào firewallStats để sync với dashboard
     // Chỉ tính là attack mới nếu IP này chưa bị block trước đó trong session này
