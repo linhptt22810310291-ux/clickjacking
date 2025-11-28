@@ -118,14 +118,18 @@ const trackSuspiciousIP = (ip) => {
 const firewallMiddleware = (req, res, next) => {
   const ip = getClientIP(req);
 
-  // 🆘 EMERGENCY UNBLOCK - Xử lý TRƯỚC khi check blocked
-  // Chỉ cho phép route này bypass IP block check (KHÔNG bypass các security khác)
-  // Route này vẫn phải qua các kiểm tra suspicious patterns phía dưới
-  if (req.path === '/api/security/emergency-unblock' && req.method === 'POST') {
-    // Vẫn log request này để biết ai đang cố unblock
-    console.log(`🆘 Emergency unblock attempt from IP: ${ip}`);
+  // 🆘 EMERGENCY & MONITORING ROUTES - Bypass IP block check only
+  // Các route này vẫn phải qua các kiểm tra suspicious patterns
+  const bypassRoutes = [
+    '/api/security/emergency-unblock',
+    '/api/security/my-ip',
+    '/api/security/stats'
+  ];
+  
+  if (bypassRoutes.includes(req.path)) {
+    console.log(`🔓 Bypass route accessed from IP: ${ip} - ${req.path}`);
     req.clientIP = ip;
-    return next(); // Bypass chỉ IP block check, các middleware khác vẫn chạy
+    return next();
   }
 
   // 🛡️ WHITELIST - Cấu hình theo môi trường
@@ -147,6 +151,25 @@ const firewallMiddleware = (req, res, next) => {
   // Check if IP is blocked (trừ whitelist)
   if (!isWhitelisted && isIPBlocked(ip)) {
     console.warn(`🚫 Blocked IP attempted access: ${ip}`);
+    
+    // 🆕 Track vào firewallStats để sync với dashboard
+    firewallStats.totalBlocked++;
+    firewallStats.blockedIPs.add(ip);
+    firewallStats.recentLogs.push({
+      timestamp: new Date().toISOString(),
+      ip: ip,
+      path: req.path || req.url,
+      type: 'IP_BLOCKED',
+      reason: 'IP in blacklist'
+    });
+    
+    // Giữ tối đa 100 logs
+    if (firewallStats.recentLogs.length > 100) {
+      firewallStats.recentLogs = firewallStats.recentLogs.slice(-100);
+    }
+    
+    console.log(`📊 Firewall stats: ${firewallStats.totalBlocked} blocked, ${firewallStats.blockedIPs.size} IPs`);
+    
     return res.status(403).json({
       success: false,
       message: 'Access denied. Your IP has been blocked.',
@@ -167,6 +190,24 @@ const firewallMiddleware = (req, res, next) => {
   if (isSuspicious) {
     console.warn(`⚠️ Suspicious request from ${ip}: ${url}`);
     trackSuspiciousIP(ip);
+    
+    // 🆕 Track vào firewallStats để sync với dashboard
+    firewallStats.totalBlocked++;
+    firewallStats.blockedIPs.add(ip);
+    firewallStats.recentLogs.push({
+      timestamp: new Date().toISOString(),
+      ip: ip,
+      path: url,
+      type: 'SUSPICIOUS_PATTERN',
+      reason: 'Suspicious URL pattern detected'
+    });
+    
+    // Giữ tối đa 100 logs
+    if (firewallStats.recentLogs.length > 100) {
+      firewallStats.recentLogs = firewallStats.recentLogs.slice(-100);
+    }
+    
+    console.log(`📊 Firewall stats: ${firewallStats.totalBlocked} blocked, ${firewallStats.blockedIPs.size} IPs`);
     
     return res.status(403).json({
       success: false,
