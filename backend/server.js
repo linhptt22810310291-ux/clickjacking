@@ -124,6 +124,14 @@ console.log('✅ All middleware loaded successfully');
 const app = express();
 console.log('✅ Express app created');
 
+/* ---------------- TRUST PROXY (Required for Render/Heroku) ---------------- */
+// Required when behind a reverse proxy (like Render, Heroku, nginx)
+// This allows express-rate-limit to correctly identify users by IP
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1); // Trust first proxy
+  console.log('✅ Trust proxy enabled for production');
+}
+
 /* ---------------- SECURITY MIDDLEWARES (Áp dụng đầu tiên) ---------------- */
 try {
   // 🔐 1. HTTP Security Headers (Helmet) - CSP được set loose cho development

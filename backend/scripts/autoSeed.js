@@ -29,6 +29,19 @@ const autoSeed = async () => {
       console.log('🔄 FORCE_RESEED enabled - clearing existing data...');
       // Delete in correct order to respect foreign keys
       try {
+        // Clear cart-related data first (references ProductVariants)
+        await db.CartItem.destroy({ where: {}, force: true });
+        await db.Cart.destroy({ where: {}, force: true });
+        // Clear order-related data (references ProductVariants)
+        await db.OrderItem.destroy({ where: {}, force: true });
+        await db.Order.destroy({ where: {}, force: true });
+        await db.GuestOrderItem.destroy({ where: {}, force: true });
+        await db.GuestOrder.destroy({ where: {}, force: true });
+        // Clear reviews (may reference products)
+        await db.Review.destroy({ where: {}, force: true });
+        // Clear wishlist
+        await db.Wishlist.destroy({ where: {}, force: true });
+        // Now clear product data
         await db.ProductImage.destroy({ where: {}, force: true });
         await db.ProductVariant.destroy({ where: {}, force: true });
         await db.Product.destroy({ where: {}, force: true });
