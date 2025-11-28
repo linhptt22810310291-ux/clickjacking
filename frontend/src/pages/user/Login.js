@@ -100,11 +100,11 @@ useEffect(() => {
         captcha: captchaInput
     };
     
+    // 🔒 SECURITY: Chỉ log thông tin không nhạy cảm
     console.log('🔐 Logging in with:', { 
-      ...loginData, 
-      password: '***',
-      actualPassword: password,
-      passwordLength: password.length
+      identifier: loginData.identifier,
+      remember: loginData.remember,
+      hasCaptcha: !!loginData.captcha
     });
     
     // Chỉ cần dispatch action, Redux Toolkit và thunk sẽ lo phần còn lại
