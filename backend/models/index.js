@@ -8,11 +8,26 @@ const env = process.env.NODE_ENV || 'development';
 const config = require(__dirname + '/../config/database.json')[env];
 const db = {};
 
+console.log('🔧 Database config:', {
+  env,
+  dialect: config.dialect,
+  use_env_variable: config.use_env_variable,
+  hasDbUrl: !!process.env.DATABASE_URL
+});
+
 let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
-} else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
+try {
+  if (config.use_env_variable) {
+    const dbUrl = process.env[config.use_env_variable];
+    console.log('🔗 Connecting with DATABASE_URL:', dbUrl ? dbUrl.substring(0, 30) + '...' : 'NOT SET');
+    sequelize = new Sequelize(dbUrl, config);
+  } else {
+    console.log('🔗 Connecting with direct config:', config.host, config.database);
+    sequelize = new Sequelize(config.database, config.username, config.password, config);
+  }
+} catch (error) {
+  console.error('❌ Sequelize initialization error:', error.message);
+  throw error;
 }
 
 fs

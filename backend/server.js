@@ -434,24 +434,33 @@ process.on('unhandledRejection', (reason, promise) => {
   logger.error(`Unhandled Rejection: ${reason}`);
 });
 
+// Log all environment variables (for debugging)
+console.log('🔧 Environment check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  PORT: process.env.PORT,
+  hasDbUrl: !!process.env.DATABASE_URL,
+  hasJwtSecret: !!process.env.JWT_SECRET
+});
+
 db.sequelize.authenticate()
   .then(() => {
     console.log('✅ Kết nối CSDL thành công bằng Sequelize.');
-    // Chỉ đồng bộ trong môi trường development để an toàn
-    // if (process.env.NODE_ENV !== 'production') {
-    //     db.sequelize.sync({ alter: true }).then(() => { // `alter: true` giúp cập nhật bảng mà không xóa dữ liệu
-    //         console.log('🔄 Đồng bộ model với database thành công.');
-    //     });
-    // }
+    
+    // Trong production, sync database để tạo tables
+    if (process.env.NODE_ENV === 'production') {
+      return db.sequelize.sync({ alter: false }).then(() => {
+        console.log('🔄 Database synced successfully.');
+      });
+    }
+  })
+  .then(() => {
     app.listen(PORT, () => {
       logger.info(`🚀 Backend đang chạy tại http://localhost:${PORT}`);
       console.log(`🚀 Backend đang chạy tại http://localhost:${PORT}`);
-      
-      // 🚨 Khởi động hệ thống Alert (Cloudflare-style) - TEMPORARY DISABLED
-      // startAlertMonitoring();
-      // logger.info('🛡️ Cloudflare-style Alert System initialized');
     });
   })
   .catch(err => {
-    console.error('❌ Kết nối CSDL thất bại:', err);
+    console.error('❌ Kết nối CSDL thất bại:', err.message);
+    console.error('❌ Full error:', err);
+    process.exit(1);
   });
