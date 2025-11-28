@@ -26,7 +26,7 @@ const authenticateToken = require('../../middleware/auth.middleware');
  */
 router.post('/emergency-unblock', async (req, res) => {
   try {
-    const { secretKey, ip } = req.body;
+    const { secretKey, ip, unblockAll } = req.body;
     
     // Secret key để bảo vệ - đặt trong ENV hoặc hardcode tạm
     const EMERGENCY_SECRET = process.env.EMERGENCY_UNBLOCK_SECRET || 'LilyShoes2024Emergency!';
@@ -38,8 +38,33 @@ router.post('/emergency-unblock', async (req, res) => {
       });
     }
     
-    // Nếu không truyền IP, lấy IP của người gọi
-    const targetIP = ip || req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim();
+    // Lấy IP thực của client (ưu tiên x-forwarded-for vì đang qua proxy)
+    const clientRealIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    
+    // Nếu unblockAll = true, xóa tất cả blocked IPs
+    if (unblockAll) {
+      const blockedList = getBlockedIPs();
+      blockedList.forEach(blockedIP => unblockIP(blockedIP));
+      
+      // Reset rate limit stats
+      if (typeof resetRateLimitStats === 'function') {
+        resetRateLimitStats();
+      }
+      
+      logger.securityEvent('Emergency UNBLOCK ALL IPs', {
+        unblockedCount: blockedList.length,
+        timestamp: new Date().toISOString()
+      });
+      
+      return res.json({
+        success: true,
+        message: `Unblocked all ${blockedList.length} IPs`,
+        unblockedIPs: blockedList
+      });
+    }
+    
+    // Nếu truyền IP cụ thể, dùng IP đó, không thì dùng IP của người gọi
+    const targetIP = ip || clientRealIP;
     
     // Unblock IP
     unblockIP(targetIP);
@@ -51,13 +76,15 @@ router.post('/emergency-unblock', async (req, res) => {
     
     logger.securityEvent('Emergency IP unblock', {
       unblockedIP: targetIP,
+      clientIP: clientRealIP,
       timestamp: new Date().toISOString()
     });
     
     res.json({
       success: true,
       message: `IP ${targetIP} has been unblocked`,
-      unblockedIP: targetIP
+      unblockedIP: targetIP,
+      yourIP: clientRealIP
     });
   } catch (error) {
     logger.error('Emergency unblock failed:', error);
