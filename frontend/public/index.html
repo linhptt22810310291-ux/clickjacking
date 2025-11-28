@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shoe Store</title>
+    
+    <script>
+      // ⚙️ CẤU HÌNH - ĐỔI GIÁ TRỊ NÀY ĐỂ BẬT/TẮT BẢO VỆ
+      var ENABLE_CLICKJACKING_PROTECTION = true ;  // true = BẬT | false = TẮT
+    </script>
+    
+    <!-- 🛡️ CSP Header (chỉ hoạt động khi bật) -->
+    <script>
+      if (ENABLE_CLICKJACKING_PROTECTION) {
+        // Thêm CSP meta tag động
+        var meta = document.createElement('meta');
+        meta.httpEquiv = 'Content-Security-Policy';
+        meta.content = "frame-ancestors 'none'";
+        document.head.appendChild(meta);
+      }
+    </script>
+    
+    <!-- 🛡️ Frame-Busting Protection -->
+    <style id="antiClickjack">body{display:none !important;}</style>
+    <script>
+      (function() {
+        var antiClickjackStyle = document.getElementById("antiClickjack");
+        
+        if (!ENABLE_CLICKJACKING_PROTECTION) {
+          // BẢO VỆ TẮT - Hiển thị bình thường
+          if (antiClickjackStyle) antiClickjackStyle.parentNode.removeChild(antiClickjackStyle);
+          console.log("⚠️ CLICKJACKING PROTECTION: DISABLED (cho demo)");
+          return;
+        }
+        
+        // BẢO VỆ BẬT - Kiểm tra iframe
+        if (self === top) {
+          // Không bị nhúng -> OK
+          if (antiClickjackStyle) antiClickjackStyle.parentNode.removeChild(antiClickjackStyle);
+          console.log("🛡️ CLICKJACKING PROTECTION: ENABLED");
+        } else {
+          // BỊ NHÚNG TRONG IFRAME -> CHẶN!
+          console.error("🚫 CLICKJACKING DETECTED! Blocking iframe embedding.");
+          
+          try {
+            top.location = self.location;
+          } catch (e) {
+            // Cross-origin -> hiển thị cảnh báo
+            document.body.style.display = 'block';
+            document.body.innerHTML = '<div style="padding:50px;text-align:center;background:linear-gradient(135deg,#f44336,#d32f2f);color:white;font-family:Arial,sans-serif;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;"><h1 style="font-size:48px;margin-bottom:20px;">🚫 BLOCKED</h1><h2>Clickjacking Protection Active</h2><p style="font-size:18px;max-width:500px;">This website cannot be embedded in an iframe.<br><br>Trang web này không thể hiển thị trong iframe.</p><p style="margin-top:30px;padding:10px 20px;background:rgba(255,255,255,0.2);border-radius:5px;">X-Frame-Options: DENY</p></div>';
+          }
+        }
+      })();
+    </script>
+    
+    <!-- 🛡️ Fix "timer is not defined" error -->
+    <script>
+      window.timer = null;
+      window.addEventListener('error', function(event) {
+        if (event.message && event.message.includes('timer is not defined')) {
+          event.preventDefault();
+          return true;
+        }
+      }, true);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

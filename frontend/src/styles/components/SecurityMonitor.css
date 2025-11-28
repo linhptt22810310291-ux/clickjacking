@@ -1,0 +1,223 @@
+/* Security Monitor Styles */
+
+.security-monitor {
+  padding: 20px;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+.security-monitor h2 {
+  color: #2c3e50;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+/* Stat Cards */
+.stat-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin-bottom: 20px;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.stat-card .card-body {
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.stat-card .stat-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.stat-card h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 10px 0;
+  color: #2c3e50;
+}
+
+.stat-card p {
+  color: #7f8c8d;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Card Color Themes */
+.attack-card {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+}
+
+.attack-card h3,
+.attack-card p {
+  color: white;
+}
+
+.blocked-card {
+  background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+}
+
+.blocked-card h3,
+.blocked-card p {
+  color: white;
+}
+
+.status-card {
+  background: linear-gradient(135deg, #48dbfb 0%, #0abde3 100%);
+}
+
+.status-card h3,
+.status-card p {
+  color: white;
+}
+
+/* Blocked IPs Table */
+.security-monitor table {
+  margin-top: 15px;
+}
+
+.security-monitor table code {
+  background: #f1f3f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #e74c3c;
+}
+
+/* Logs Container */
+.logs-container {
+  max-height: 500px;
+  overflow-y: auto;
+  background: #2d3436;
+  padding: 20px;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+}
+
+.log-entry {
+  padding: 10px;
+  margin-bottom: 8px;
+  border-left: 4px solid #dfe6e9;
+  background: #34495e;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.log-entry.error {
+  border-left-color: #e74c3c;
+}
+
+.log-entry.warn {
+  border-left-color: #f39c12;
+}
+
+.log-entry.info {
+  border-left-color: #3498db;
+}
+
+.log-timestamp {
+  color: #95a5a6;
+  font-size: 0.85rem;
+  min-width: 180px;
+}
+
+.log-level {
+  min-width: 80px;
+}
+
+.log-message {
+  color: #ecf0f1;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+/* Demo Instructions */
+.demo-instructions {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.demo-instructions .card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+  font-weight: 600;
+}
+
+.demo-instructions ol {
+  line-height: 2;
+}
+
+.demo-instructions code {
+  background: #f1f3f5;
+  padding: 3px 8px;
+  border-radius: 4px;
+  color: #e74c3c;
+  font-size: 0.9rem;
+}
+
+.demo-instructions kbd {
+  background: #2c3e50;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stat-card h3 {
+    font-size: 2rem;
+  }
+  
+  .logs-container {
+    max-height: 300px;
+  }
+  
+  .log-entry {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Scrollbar styling for logs */
+.logs-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.logs-container::-webkit-scrollbar-track {
+  background: #2d3436;
+}
+
+.logs-container::-webkit-scrollbar-thumb {
+  background: #95a5a6;
+  border-radius: 4px;
+}
+
+.logs-container::-webkit-scrollbar-thumb:hover {
+  background: #7f8c8d;
+}
+
+/* Alert animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.stat-card.attack-card {
+  animation: pulse 2s infinite;
+}

@@ -1,0 +1,443 @@
+/* 🛡️ SECURITY DASHBOARD STYLES - Cloudflare-inspired */
+
+.security-dashboard {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+.security-dashboard-access-denied {
+  text-align: center;
+  padding: 100px 20px;
+  font-size: 24px;
+  color: #e53e3e;
+  background: white;
+  border-radius: 10px;
+  margin: 50px;
+}
+
+/* Header */
+.security-header {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 30px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.security-header h1 {
+  margin: 0;
+  font-size: 36px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.security-subtitle {
+  margin: 10px 0 0;
+  color: #718096;
+  font-size: 16px;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: slideUp 0.5s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  font-size: 48px;
+  opacity: 0.9;
+}
+
+.stat-content h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-value {
+  margin: 10px 0 0;
+  font-size: 32px;
+  font-weight: bold;
+  color: #2d3748;
+}
+
+.stat-attacks {
+  border-left: 5px solid #f56565;
+}
+
+.stat-blocked {
+  border-left: 5px solid #ed8936;
+}
+
+.stat-recent {
+  border-left: 5px solid #ecc94b;
+}
+
+.stat-logs {
+  border-left: 5px solid #48bb78;
+}
+
+/* Actions */
+.dashboard-actions {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.btn-clear-blacklist {
+  background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(245, 101, 101, 0.4);
+}
+
+.btn-clear-blacklist:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(245, 101, 101, 0.5);
+}
+
+/* Sections */
+.section {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.6s ease;
+}
+
+.section h2 {
+  margin: 0 0 20px;
+  font-size: 24px;
+  color: #2d3748;
+  border-bottom: 3px solid #667eea;
+  padding-bottom: 10px;
+}
+
+.no-data {
+  text-align: center;
+  color: #a0aec0;
+  padding: 30px;
+  font-size: 16px;
+}
+
+/* Blocked IPs */
+.blocked-ips-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.blocked-ip-item {
+  background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: bold;
+  box-shadow: 0 3px 10px rgba(245, 101, 101, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.ip-address {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+}
+
+/* Attacks Table */
+.attacks-table-container {
+  overflow-x: auto;
+}
+
+.attacks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.attacks-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.attacks-table th {
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.attacks-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.attacks-table tbody tr:hover {
+  background: #f7fafc;
+}
+
+.ip-cell {
+  font-family: 'Courier New', monospace;
+  color: #2d3748;
+  font-weight: bold;
+}
+
+.endpoint-cell {
+  font-family: 'Courier New', monospace;
+  color: #4a5568;
+  font-size: 13px;
+}
+
+.action-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.action-blocked {
+  background: #feb2b2;
+  color: #c53030;
+}
+
+.action-detected {
+  background: #fbd38d;
+  color: #c05621;
+}
+
+/* Log Files Grid */
+.log-files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+}
+
+.log-file-card {
+  background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+  padding: 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.log-file-card:hover {
+  border-color: #667eea;
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.log-file-card.active {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.log-file-name {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.log-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Log Content Viewer */
+.log-content-container {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.log-content-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.log-content-table thead {
+  background: #2d3748;
+  color: white;
+  position: sticky;
+  top: 0;
+}
+
+.log-content-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.log-content-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.log-level-warn {
+  background: #fffaf0;
+}
+
+.log-level-error {
+  background: #fff5f5;
+}
+
+.log-time {
+  font-family: 'Courier New', monospace;
+  color: #718096;
+  white-space: nowrap;
+}
+
+.log-level-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.level-info {
+  background: #bee3f8;
+  color: #2c5282;
+}
+
+.level-warn {
+  background: #fbd38d;
+  color: #c05621;
+}
+
+.level-error {
+  background: #feb2b2;
+  color: #c53030;
+}
+
+.log-message {
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.log-meta {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #718096;
+}
+
+.meta-item {
+  display: inline-block;
+  margin-right: 15px;
+  background: #edf2f7;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 30px;
+  font-size: 16px;
+  color: #718096;
+}
+
+.error {
+  color: #e53e3e;
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .security-dashboard {
+    padding: 10px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .security-header h1 {
+    font-size: 28px;
+  }
+
+  .attacks-table {
+    font-size: 12px;
+  }
+
+  .attacks-table th,
+  .attacks-table td {
+    padding: 8px;
+  }
+
+  .log-files-grid {
+    grid-template-columns: 1fr;
+  }
+}

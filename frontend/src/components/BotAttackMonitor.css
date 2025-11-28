@@ -1,0 +1,150 @@
+.bot-attack-alert {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 9999;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(255, 0, 0, 0.3);
+  padding: 20px;
+  min-width: 350px;
+  max-width: 450px;
+  animation: slideIn 0.5s ease-out, pulse 2s infinite;
+  border: 3px solid #ffd700; /* Viền vàng cho admin */
+}
+
+/* Badge ADMIN ONLY */
+.bot-attack-alert::before {
+  content: '👑 ADMIN ONLY';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffd700;
+  color: #000;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(500px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 8px 32px rgba(255, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(255, 0, 0, 0.6);
+  }
+}
+
+.alert-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.alert-icon {
+  font-size: 32px;
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.alert-text {
+  flex: 1;
+}
+
+.alert-text strong {
+  font-size: 16px;
+  display: block;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.alert-text p {
+  margin: 5px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.alert-text small {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.alert-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 24px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s;
+  line-height: 1;
+  padding: 0;
+}
+
+.alert-close:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: rotate(90deg);
+}
+
+.alert-details {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.alert-details summary {
+  cursor: pointer;
+  font-weight: bold;
+  margin-bottom: 10px;
+  user-select: none;
+}
+
+.alert-details summary:hover {
+  text-decoration: underline;
+}
+
+.alert-details ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0 0;
+}
+
+.alert-details li {
+  padding: 5px 0;
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .bot-attack-alert {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    min-width: unset;
+    max-width: unset;
+  }
+}
