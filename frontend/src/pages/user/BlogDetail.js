@@ -52,7 +52,14 @@ export default function BlogDetail() {
     );
   }
 
-  const imageUrl = blog.ImageURL ? `${API_BASE_URL}${blog.ImageURL}` : PLACEHOLDER;
+  // Helper để xử lý URL ảnh (local hoặc Cloudinary)
+  const resolveImageUrl = (imagePath, placeholder = PLACEHOLDER) => {
+    if (!imagePath) return placeholder;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+    return `${API_BASE_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+  };
+
+  const imageUrl = resolveImageUrl(blog.ImageURL);
 
   return (
     <div className="blog-detail-page">

@@ -18,10 +18,17 @@ const GROUPS = [{ key: 'Men', label: 'Nam' }, { key: 'Women', label: 'Nữ' }, {
 const SORTS = [{ key: '', label: 'Mặc định' }, { key: 'name_asc', label: 'Tên A → Z' }, { key: 'name_desc', label: 'Tên Z → A' }, { key: 'price_asc', label: 'Giá tăng dần' }, { key: 'price_desc', label: 'Giá giảm dần' }];
 const fmtVND = (n) => typeof n === 'number' ? n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) : '';
 
+// Helper function to resolve image URLs
+const resolveImageUrl = (url) => {
+    if (!url) return PLACEHOLDER;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `${API_BASE_URL}${url}`;
+};
+
 function ProductCardItem({ p }) {
     const navigate = useNavigate();
     const hasDiscount = p.DiscountPercent > 0;
-    const imageUrl = p.DefaultImage ? `${API_BASE_URL}${p.DefaultImage}` : PLACEHOLDER;
+    const imageUrl = resolveImageUrl(p.DefaultImage);
 
     return (
         <Card className="product-card h-100" onClick={() => navigate(`/product/${p.ProductID}`)} style={{ cursor: 'pointer' }}>

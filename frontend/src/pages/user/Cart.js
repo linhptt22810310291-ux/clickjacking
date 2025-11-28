@@ -23,6 +23,13 @@ import VariantPickerModal from "../../components/VariantPickerModal"; // Tách M
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 const PLACEHOLDER_IMG = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
 
+// Helper để xử lý URL ảnh (local hoặc Cloudinary)
+const resolveImageUrl = (imagePath) => {
+    if (!imagePath) return PLACEHOLDER_IMG;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+    return `${API_BASE_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
+
 function Cart() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -146,7 +153,7 @@ function Cart() {
                                     </td>
                                     <td>
                                         <div className="d-flex align-items-center gap-2">
-                                            <img src={`${API_BASE_URL}${item.variant.ProductImage}`} alt={item.variant.product.Name} style={{ width: 60, height: 60, objectFit: "cover" }} onError={(e) => e.target.src = PLACEHOLDER_IMG} />  {/* SỬA: Dùng <img> thay Image nếu không import */}
+                                            <img src={resolveImageUrl(item.variant.ProductImage)} alt={item.variant.product.Name} style={{ width: 60, height: 60, objectFit: "cover" }} onError={(e) => e.target.src = PLACEHOLDER_IMG} />  {/* SỬA: Dùng <img> thay Image nếu không import */}
                                             <div>
                                                 <Link to={`/product/${item.variant.ProductID}`} className="fw-semibold text-decoration-none text-dark">{item.variant.product.Name}</Link>
                                             </div>

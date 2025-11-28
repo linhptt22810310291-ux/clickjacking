@@ -163,12 +163,19 @@ export default function BlogList() {
       ) : (
         <>
           <Row xs={1} sm={2} md={3} className="g-4">
-            {posts.map((p) => (
+            {posts.map((p) => {
+              // Helper để xử lý URL ảnh (local hoặc Cloudinary)
+              const resolveImageUrl = (imagePath) => {
+                if (!imagePath) return PLACEHOLDER;
+                if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+                return `${API_BASE_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+              };
+              return (
               <Col key={p.BlogID}>
                 <Card className="post-card">
                   <div className="cover-wrap">
                     <img
-                      src={p.ImageURL ? `${API_BASE_URL}${p.ImageURL}` : PLACEHOLDER}
+                      src={resolveImageUrl(p.ImageURL)}
                       alt={p.Title}
                       onError={(e) => (e.currentTarget.src = PLACEHOLDER)}
                     />
@@ -186,7 +193,8 @@ export default function BlogList() {
                   </Card.Body>
                 </Card>
               </Col>
-            ))}
+              );
+            })}
           </Row>
 
           <div className="d-flex justify-content-center mt-4 pt-3 border-top">

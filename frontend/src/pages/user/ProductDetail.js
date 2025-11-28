@@ -42,6 +42,13 @@ import { selectUser } from "../../redux/userSlice"; // 👉 Lấy thông tin use
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 const PLACEHOLDER = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
 
+// Helper function to resolve image URLs (supports both relative and full URLs)
+const resolveImageUrl = (url) => {
+  if (!url) return PLACEHOLDER;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${API_BASE_URL}${url}`;
+};
+
 const formatVND = (n) => (n == null ? "" : n.toLocaleString("vi-VN") + "₫");
 
 // --- Component ProductCardItem ---
@@ -49,7 +56,7 @@ function ProductCardItem({ p }) {
   const navigate = useNavigate();
   const hasDiscount = p.DiscountPercent > 0;
   const finalPrice = Number(p.DiscountedPrice || p.Price) || 0;
-  const imageUrl = p.DefaultImage ? `${API_BASE_URL}${p.DefaultImage}` : PLACEHOLDER;
+  const imageUrl = resolveImageUrl(p.DefaultImage);
 
   return (
     <Card
@@ -177,7 +184,12 @@ export default function ProductDetail() {
 
   // Ảnh đang hiển thị: ưu tiên theo SIZE → COLOR
   const currentImage = useMemo(() => {
-    const norm = (u) => (u ? `${API_BASE_URL}${u}` : "");
+    // Helper cho Cloudinary URL
+    const norm = (u) => {
+      if (!u) return "";
+      if (u.startsWith('http://') || u.startsWith('https://')) return u;
+      return `${API_BASE_URL}${u}`;
+    };
 
     // 1️⃣ Biến thể đúng size + màu
     if (selectedVariant?.ImageURL) return norm(selectedVariant.ImageURL);

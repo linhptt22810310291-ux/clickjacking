@@ -109,6 +109,13 @@ export default function VariantPickerModal({ show, onHide, product, action, onAd
         }
     };
 
+    // Helper để xử lý URL ảnh (local hoặc Cloudinary)
+    const resolveImgUrl = (imagePath) => {
+        if (!imagePath) return null;
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+        return `${API_BASE_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+    };
+
     // SỬA: Thêm safety check cho variants
     const getImageForSelection = () => {
         const currentProduct = product || editingItem?.variant?.product;
@@ -116,10 +123,10 @@ export default function VariantPickerModal({ show, onHide, product, action, onAd
             console.warn("Variants not array, using placeholder");  // Log để debug
             return PLACEHOLDER_IMG;
         }
-        if (selVariant?.ImageURL) return `${API_BASE_URL}${selVariant.ImageURL}`;
+        if (selVariant?.ImageURL) return resolveImgUrl(selVariant.ImageURL);
         const sameColorVariant = variants.find(v => v.Color === selColor && v.ImageURL);
-        if (sameColorVariant) return `${API_BASE_URL}${sameColorVariant.ImageURL}`;
-        if (currentProduct?.DefaultImage) return `${API_BASE_URL}${currentProduct.DefaultImage}`;
+        if (sameColorVariant) return resolveImgUrl(sameColorVariant.ImageURL);
+        if (currentProduct?.DefaultImage) return resolveImgUrl(currentProduct.DefaultImage);
         return PLACEHOLDER_IMG;
     };
 

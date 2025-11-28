@@ -60,14 +60,19 @@ export default function Home() {
     }
   };
 
+  // Helper để xử lý URL ảnh (local hoặc Cloudinary)
+  const resolveImageUrl = (imagePath, placeholder = PLACEHOLDER_IMG) => {
+    if (!imagePath) return placeholder;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+    return `${API_BASE_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+  };
+
   const handleBuyNow = (variant, quantity, product) => {
     const item = {
       variantId: variant.VariantID,
       productId: product.ProductID,
       name: product.Name,
-      image: variant.ImageURL
-        ? `${API_BASE_URL}${variant.ImageURL}`
-        : `${API_BASE_URL}${product.DefaultImage}`,
+      image: resolveImageUrl(variant.ImageURL || product.DefaultImage),
       color: variant.Color,
       size: variant.Size,
       price: variant.Price,
@@ -402,7 +407,7 @@ export default function Home() {
                       onClick={() => navigate(`/product/${p.ProductID}`)}
                     >
                       <img
-                        src={p.DefaultImage ? `${API_BASE_URL}${p.DefaultImage}` : PLACEHOLDER_IMG}
+                        src={resolveImageUrl(p.DefaultImage)}
                         alt={p.Name}
                         onError={(e) => (e.currentTarget.src = PLACEHOLDER_IMG)}
                       />

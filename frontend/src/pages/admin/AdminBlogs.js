@@ -19,6 +19,13 @@ import { createBlogAPI, updateBlogAPI, getBlogByIdAdminAPI } from '../../api';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+// Helper để xử lý URL ảnh (local hoặc Cloudinary)
+const resolveImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+    return `${API_BASE_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
+
 export default function AdminBlogs() {
     const dispatch = useDispatch();
     const { blogs, pagination, status, error } = useSelector(state => state.adminBlogs);
@@ -150,7 +157,7 @@ export default function AdminBlogs() {
                             <tr key={blog.BlogID}>
                                 <td>{blog.BlogID}</td><td>{blog.Title}</td><td>{blog.Author || 'N/A'}</td>
                                 <td>{new Date(blog.CreatedAt).toLocaleDateString('vi-VN')}</td>
-                                <td>{blog.ImageURL && <Image src={`${API_BASE_URL}${blog.ImageURL}`} width="50" thumbnail />}</td>
+                                <td>{blog.ImageURL && <Image src={resolveImageUrl(blog.ImageURL)} width="50" thumbnail />}</td>
                                 <td><span className={`badge ${blog.IsActive ? 'bg-success' : 'bg-secondary'}`}>{blog.IsActive ? 'Hiển thị' : 'Ẩn'}</span></td>
                                 <td>
                                     <Button variant="outline-warning" size="sm" onClick={() => handleEdit(blog)} className="me-2">Sửa</Button>
@@ -179,7 +186,7 @@ export default function AdminBlogs() {
                         {isEdit && editingBlog?.ImageURL && (
                             <Form.Group className="mb-3">
                                 <Form.Label>Ảnh hiện tại:</Form.Label>
-                                <div><Image src={`${API_BASE_URL}${editingBlog.ImageURL}`} width="100" thumbnail /></div>
+                                <div><Image src={resolveImageUrl(editingBlog.ImageURL)} width="100" thumbnail /></div>
                             </Form.Group>
                         )}
                         <Form.Group className="mb-3"><Form.Label>Trạng thái</Form.Label><Form.Check type="switch" name="IsActive" label={formik.values.IsActive ? "Hiển thị" : "Ẩn"} checked={formik.values.IsActive} onChange={formik.handleChange} /></Form.Group>
