@@ -8,18 +8,38 @@
 const db = require('../models');
 const bcrypt = require('bcryptjs');
 
+// Cloudinary base URL
+const CLOUDINARY_BASE = 'https://res.cloudinary.com/ddduuddmz/image/upload/v1764329879/webgiay';
+
 const autoSeed = async () => {
   console.log('🌱 Checking if database needs seeding...');
   
   try {
+    // Force reseed if FORCE_RESEED=true
+    const forceReseed = process.env.FORCE_RESEED === 'true';
+    
     // Check if Users table is empty
     const userCount = await db.User.count();
-    if (userCount > 0) {
+    if (userCount > 0 && !forceReseed) {
       console.log('✅ Database already has data, skipping auto-seed.');
       return;
     }
 
-    console.log('🌱 Database is empty, starting auto-seed...');
+    if (forceReseed && userCount > 0) {
+      console.log('🔄 FORCE_RESEED enabled - clearing existing data...');
+      // Delete in correct order to respect foreign keys
+      await db.ProductImage.destroy({ where: {}, truncate: true, cascade: true });
+      await db.ProductVariant.destroy({ where: {}, truncate: true, cascade: true });
+      await db.Product.destroy({ where: {}, truncate: true, cascade: true });
+      await db.Category.destroy({ where: {}, truncate: true, cascade: true });
+      await db.Blog.destroy({ where: {}, truncate: true, cascade: true });
+      await db.PaymentMethod.destroy({ where: {}, truncate: true, cascade: true });
+      await db.ShippingProvider.destroy({ where: {}, truncate: true, cascade: true });
+      // Keep users
+      console.log('  ✅ Old data cleared (users kept)');
+    }
+
+    console.log('🌱 Starting auto-seed...');
 
     // --- 1. Seed Users ---
     console.log('  → Seeding Users...');
@@ -121,18 +141,53 @@ const autoSeed = async () => {
     await db.ProductVariant.bulkCreate(variants);
     console.log('  ✅ Product Variants seeded');
 
-    // --- 5. Seed Product Images (using placeholder URLs) ---
+    // --- 5. Seed Product Images (using Cloudinary URLs) ---
     console.log('  → Seeding Product Images...');
     const allVariants = await db.ProductVariant.findAll({ include: ['product'] });
     const images = [];
     
-    // Use placehold.co for reliable placeholder images
-    allVariants.forEach((variant, idx) => {
-      const colorText = variant.Color === 'Đen' ? 'Black' : 'White';
+    // Map category to image folder and prefix
+    const categoryImageMap = {
+      'Giày Thể Thao Nam': { folder: 'SPORT/MEN', prefix: 'sport' },
+      'Giày Thể Thao Nữ': { folder: 'SPORT/WOMEN', prefix: 'sport' },
+      'Giày Công Sở Nam': { folder: 'OFFICE/MEN', prefix: 'office' },
+      'Giày Công Sở Nữ': { folder: 'OFFICE/WOMEN', prefix: 'office' },
+      'Giày Sandal Nam': { folder: 'SANDAL/MEN', prefix: 'sandal' },
+      'Giày Sandal Nữ': { folder: 'SANDAL/WOMEN', prefix: 'sandal' },
+      'Sneaker Unisex': { folder: 'SNEAKER/UNISEX', prefix: 'sneaker' },
+    };
+    
+    // Get category names
+    const prodCategories = {};
+    const prods = await db.Product.findAll({ include: ['category'] });
+    prods.forEach(p => {
+      prodCategories[p.ProductID] = p.category?.Name;
+    });
+    
+    // Product index tracker per category
+    const categoryProductIndex = {};
+    
+    allVariants.forEach((variant) => {
+      const catName = prodCategories[variant.ProductID];
+      const imgConfig = categoryImageMap[catName];
+      
+      if (!imgConfig) return;
+      
+      // Track product index within category
+      const key = `${catName}-${variant.ProductID}`;
+      if (!categoryProductIndex[key]) {
+        const existingCount = Object.keys(categoryProductIndex).filter(k => k.startsWith(catName)).length;
+        categoryProductIndex[key] = existingCount + 1;
+      }
+      const prodNum = categoryProductIndex[key];
+      
+      const colorSuffix = variant.Color === 'Đen' ? 'den' : 'trang';
+      const imageUrl = `${CLOUDINARY_BASE}/${imgConfig.folder}/${imgConfig.prefix}${prodNum}${colorSuffix}.jpg`;
+      
       images.push({
         ProductID: variant.ProductID,
         VariantID: variant.VariantID,
-        ImageURL: `https://placehold.co/400x400/e2e8f0/64748b?text=Shoe+${colorText}`,
+        ImageURL: imageUrl,
         IsDefault: variant.Color === 'Đen'
       });
     });
@@ -163,21 +218,21 @@ const autoSeed = async () => {
         Title: 'Hướng dẫn chọn giày phù hợp',
         Content: 'Việc chọn giày phù hợp rất quan trọng để bảo vệ đôi chân của bạn. Đầu tiên, hãy đo kích thước chân chính xác. Thử giày vào buổi chiều khi chân đã giãn nở. Đảm bảo có khoảng trống 1cm ở mũi giày...',
         Author: 'Admin',
-        ImageURL: 'https://placehold.co/800x400/e2e8f0/64748b?text=Blog+1',
+        ImageURL: `${CLOUDINARY_BASE}/blogs/blog-size-online.webp`,
         IsActive: true
       },
       {
         Title: 'Xu hướng giày 2025',
         Content: 'Năm 2025 chứng kiến sự trở lại của phong cách retro với sneaker chunky và giày cao gót block heel. Màu sắc pastel và earth tone vẫn được ưa chuộng...',
         Author: 'Admin',
-        ImageURL: 'https://placehold.co/800x400/e2e8f0/64748b?text=Blog+2',
+        ImageURL: `${CLOUDINARY_BASE}/blogs/blog-5-kieu-giay.webp`,
         IsActive: true
       },
       {
         Title: 'Cách bảo quản giày da',
         Content: 'Giày da cần được bảo quản đúng cách để giữ được độ bền. Hãy lau sạch sau mỗi lần sử dụng, dùng xi đánh giày định kỳ, và bảo quản nơi khô ráo thoáng mát...',
         Author: 'Admin',
-        ImageURL: 'https://placehold.co/800x400/e2e8f0/64748b?text=Blog+3',
+        ImageURL: `${CLOUDINARY_BASE}/blogs/blog-cham-soc-giay-da.webp`,
         IsActive: true
       }
     ]);
