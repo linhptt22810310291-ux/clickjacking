@@ -279,10 +279,17 @@ exports.getAllProductsAdmin = async (req, res) => {
             whereClause.CategoryID = categoryId;
         }
 
-        // CHỈNH SỬA: Sắp xếp theo DiscountedPrice
-        const order = sortPrice
-            ? [[Sequelize.literal('DiscountedPrice'), sortPrice.toUpperCase()]]
-            : [['ProductID', 'ASC']];
+        // CHỈNH SỬA: Sắp xếp theo DiscountedPrice - PostgreSQL compatible
+        let order;
+        if (sortPrice) {
+            if (isPostgres()) {
+                order = [[Sequelize.literal('"DiscountedPrice"'), sortPrice.toUpperCase()]];
+            } else {
+                order = [[Sequelize.literal('DiscountedPrice'), sortPrice.toUpperCase()]];
+            }
+        } else {
+            order = [['ProductID', 'ASC']];
+        }
 
 
         const { count, rows } = await db.Product.findAndCountAll({

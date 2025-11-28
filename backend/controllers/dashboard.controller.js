@@ -2,6 +2,7 @@
 const db = require('../models');
 const { Op, Sequelize } = require('sequelize');
 const { startOfDay, startOfWeek, startOfMonth, subDays } = require('date-fns');
+const { isPostgres, getTopProductsQuery, getTopProductsTotalQuery, getRevenueChartQuery, getOrdersChartQuery } = require('../utils/dbHelper');
 
 // --- Helper Functions to define date ranges ---
 const successfulOrderStatus = ['Confirmed', 'Shipped', 'Delivered'];
@@ -99,61 +100,9 @@ exports.getPaginatedTopProducts = async (req, res) => {
         const limit = Math.max(1, parseInt(req.query.limit || '5', 10));
         const offset = (page - 1) * limit;
 
-        // SỬA LỖI: Cập nhật subquery cho DefaultImage
-        const query = `
-            SELECT 
-                p.ProductID, p.Name, pv.VariantID, pv.Size, pv.Color, 
-                p.Price, p.DiscountPercent, p.DiscountedPrice, 
-                SUM(qty) AS sold,
-                (
-                    COALESCE(
-                        -- 1. Ưu tiên 1: Lấy ảnh của chính VariantID này (nếu có)
-                        (SELECT TOP 1 i.ImageURL 
-                         FROM ProductImages i 
-                         WHERE i.VariantID = pv.VariantID 
-                         ORDER BY i.IsDefault DESC, i.ImageID ASC),
-                         
-                        -- 2. Ưu tiên 2: Lấy ảnh của MỘT BIẾN THỂ KHÁC CÙNG MÀU
-                        (SELECT TOP 1 i_color.ImageURL
-                         FROM ProductImages i_color
-                         JOIN ProductVariants pv_color ON i_color.VariantID = pv_color.VariantID
-                         WHERE pv_color.ProductID = p.ProductID AND pv_color.Color = pv.Color
-                         ORDER BY i_color.IsDefault DESC, i_color.ImageID ASC),
-                         
-                        -- 3. Ưu tiên 3: Lấy ảnh chung (Default) của sản phẩm
-                        (SELECT TOP 1 i_prod_def.ImageURL 
-                         FROM ProductImages i_prod_def 
-                         WHERE i_prod_def.ProductID = p.ProductID AND i_prod_def.VariantID IS NULL 
-                         ORDER BY i_prod_def.IsDefault DESC, i_prod_def.ImageID ASC),
-                         
-                        -- 4. Ưu tiên 4: Lấy BẤT KỲ ảnh nào của sản phẩm
-                        (SELECT TOP 1 i_any.ImageURL 
-                         FROM ProductImages i_any 
-                         WHERE i_any.ProductID = p.ProductID 
-                         ORDER BY i_any.ImageID ASC)
-                    )
-                ) AS DefaultImage
-            FROM (
-                SELECT oi.Quantity AS qty, oi.VariantID FROM OrderItems oi JOIN Orders o ON o.OrderID = oi.OrderID WHERE o.Status IN (:statuses)
-                UNION ALL
-                SELECT goi.Quantity AS qty, goi.VariantID FROM GuestOrderItems goi JOIN GuestOrders go ON go.GuestOrderID = goi.GuestOrderID WHERE go.Status IN (:statuses)
-            ) AS allItems
-            JOIN ProductVariants pv ON allItems.VariantID = pv.VariantID
-            JOIN Products p ON pv.ProductID = p.ProductID
-            GROUP BY p.ProductID, p.Name, pv.VariantID, pv.Size, pv.Color, p.Price, p.DiscountPercent, p.DiscountedPrice
-            ORDER BY sold DESC
-            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-        `;
-
-        // Câu truy vấn đếm tổng số (không đổi)
-        const totalQuery = `
-            SELECT COUNT(DISTINCT allItems.VariantID) AS totalItems
-            FROM (
-                SELECT oi.VariantID FROM OrderItems oi JOIN Orders o ON o.OrderID = oi.OrderID WHERE o.Status IN (:statuses)
-                UNION ALL
-                SELECT goi.VariantID FROM GuestOrderItems goi JOIN GuestOrders go ON go.GuestOrderID = goi.GuestOrderID WHERE go.Status IN (:statuses)
-            ) AS allItems
-        `;
+        // Use DB-compatible query from helper
+        const query = getTopProductsQuery();
+        const totalQuery = getTopProductsTotalQuery();
 
         const [rows, totalResult] = await Promise.all([
             db.sequelize.query(query, {
@@ -168,7 +117,7 @@ exports.getPaginatedTopProducts = async (req, res) => {
             })
         ]);
         
-        const total = totalResult[0]?.totalItems || 0;
+        const total = totalResult[0]?.totalItems || totalResult[0]?.totalitems || 0;
         res.json({ data: rows, total, page, limit, totalPages: Math.ceil(total / limit) || 1 });
 
     } catch (error) {
@@ -262,14 +211,7 @@ async function getOrderStatusCounts() {
 }
 
 async function getRevenueChartData() {
-    return db.sequelize.query(`
-        SELECT CAST(date AS DATE) as date, SUM(revenue) AS revenue FROM (
-            SELECT OrderDate AS date, TotalAmount AS revenue FROM Orders WHERE Status IN (:statuses) AND OrderDate >= :startDate
-            UNION ALL
-            SELECT OrderDate AS date, TotalAmount AS revenue FROM GuestOrders WHERE Status IN (:statuses) AND OrderDate >= :startDate
-        ) AS combined
-        GROUP BY CAST(date AS DATE) ORDER BY date
-    `, {
+    return db.sequelize.query(getRevenueChartQuery(), {
         replacements: { statuses: successfulOrderStatus, startDate: last30DaysStart },
         type: Sequelize.QueryTypes.SELECT,
         raw: true
@@ -277,14 +219,7 @@ async function getRevenueChartData() {
 }
 
 async function getOrdersChartData() {
-    return db.sequelize.query(`
-        SELECT CAST(date AS DATE) as date, COUNT(*) AS orders FROM (
-            SELECT OrderDate AS date FROM Orders WHERE Status IN (:statuses) AND OrderDate >= :startDate
-            UNION ALL
-            SELECT OrderDate AS date FROM GuestOrders WHERE Status IN (:statuses) AND OrderDate >= :startDate
-        ) AS combined
-        GROUP BY CAST(date AS DATE) ORDER BY date
-    `, {
+    return db.sequelize.query(getOrdersChartQuery(), {
         replacements: { statuses: successfulOrderStatus, startDate: last30DaysStart },
         type: Sequelize.QueryTypes.SELECT,
         raw: true
