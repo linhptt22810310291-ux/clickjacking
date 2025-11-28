@@ -17,6 +17,10 @@ const notifier = require('node-notifier');
 const logger = require('./logger');
 const path = require('path');
 
+// Base URLs for production
+const BACKEND_URL = process.env.BASE_URL || 'http://localhost:5000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
 // Cấu hình
 const CONFIG = {
   // Ngưỡng kích hoạt alert
@@ -145,7 +149,7 @@ async function alertBotAttack(attackData) {
     <p><strong>Tổng IPs bị chặn:</strong> ${blockedCount}</p>
     <hr>
     <p style="color: #666;">Hệ thống đã tự động chặn IP này. Kiểm tra logs để biết thêm chi tiết.</p>
-    <p><a href="http://localhost:5000/admin/security">Xem Dashboard</a></p>
+    <p><a href="${FRONTEND_URL}/admin/security">Xem Dashboard</a></p>
   `;
   
   await sendEmailAlert('Bot Attack Detected', emailHtml);
@@ -185,7 +189,7 @@ async function alertMassiveAttack(data) {
     <p style="color: #d32f2f; font-weight: bold;">
       ⚠️ Hệ thống có thể đang bị tấn công DDoS phối hợp!
     </p>
-    <p><a href="http://localhost:5000/admin/security">Xem Dashboard ngay</a></p>
+    <p><a href="${FRONTEND_URL}/admin/security">Xem Dashboard ngay</a></p>
   `;
   
   await sendEmailAlert('MASSIVE ATTACK - Immediate Action Required!', emailHtml);

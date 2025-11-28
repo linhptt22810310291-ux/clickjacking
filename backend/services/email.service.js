@@ -54,7 +54,8 @@ exports.sendWelcomeEmail = async (to, username, voucherCode) => {
  */
 exports.sendOtpEmail = async (to, otp) => {
     try {
-        const resetLink = `http://localhost:3000/reset-password?email=${encodeURIComponent(to)}`;
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const resetLink = `${frontendUrl}/reset-password?email=${encodeURIComponent(to)}`;
 
         await transporter.sendMail({
             from: `"Shoe Store" <${process.env.GMAIL_USER}>`,

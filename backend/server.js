@@ -546,20 +546,22 @@ app.get("/api/current_user", authenticateUser, async (req, res) => {
 
 
 /* ---------------- OAUTH ROUTES (REFACTORED) ---------------- */
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
 app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"], session: false }));
-app.get("/auth/google/callback", passport.authenticate("google", { failureRedirect: "http://localhost:3000/login", session: false }), (req, res) => {
+app.get("/auth/google/callback", passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login`, session: false }), (req, res) => {
     const user = req.user.get({ plain: true });
     const payload = { id: user.UserID, role: user.Role, username: user.Username, email: user.Email, avatar: user.AvatarURL };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
-    res.redirect(`http://localhost:3000/login?token=${token}&role=${user.Role}`);
+    res.redirect(`${FRONTEND_URL}/login?token=${token}&role=${user.Role}`);
 });
 
 app.get("/auth/facebook", passport.authenticate("facebook", { scope: ["email"], session: false }));
-app.get("/auth/facebook/callback", passport.authenticate("facebook", { failureRedirect: "http://localhost:3000/login", session: false }), (req, res) => {
+app.get("/auth/facebook/callback", passport.authenticate("facebook", { failureRedirect: `${FRONTEND_URL}/login`, session: false }), (req, res) => {
     const user = req.user.get({ plain: true });
     const payload = { id: user.UserID, role: user.Role, username: user.Username, email: user.Email, avatar: user.AvatarURL };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
-    res.redirect(`http://localhost:3000/login?token=${token}&role=${user.Role}`);
+    res.redirect(`${FRONTEND_URL}/login?token=${token}&role=${user.Role}`);
 });
 
 
