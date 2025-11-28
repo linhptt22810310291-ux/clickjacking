@@ -288,6 +288,8 @@ const adminJwtMiddleware = expressjwt({
 });
 console.log('✅ JWT middleware created');
 
+console.log('🔧 Setting up admin JWT middleware...');
+
 // ✅ Áp dụng JWT chỉ cho các route admin CẦN xác thực (không áp dụng cho /auth)
 app.use('/api/admin', (req, res, next) => {
   // Bỏ qua JWT cho route login/register
@@ -303,81 +305,96 @@ app.use('/api/admin', (req, res, next) => {
     next();
   });
 });
-
+console.log('✅ Admin JWT route applied');
 
 // Middleware xác thực JWT cho các route user cần đăng nhập
-const authenticateUser = expressjwt({ secret: process.env.JWT_SECRET, algorithms: ['HS256'] });
+const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-for-testing';
+const authenticateUser = expressjwt({ secret: jwtSecret, algorithms: ['HS256'] });
+console.log('✅ User JWT middleware created');
 
 // Middleware xác thực "tùy chọn" cho wishlist
 const authenticateWishlistOptional = expressjwt({
-    secret: process.env.JWT_SECRET,
+    secret: jwtSecret,
     algorithms: ['HS256'],
     credentialsRequired: false // Quan trọng: không báo lỗi nếu thiếu token
 });
+console.log('✅ Wishlist JWT middleware created');
 
 
 /* ---------------- PASSPORT - SOCIAL LOGIN (REFACTORED) ---------------- */
+console.log('🔧 Setting up Passport...');
 app.use(passport.initialize());
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const email = profile.emails[0].value;
-        // Sử dụng Sequelize: Tìm user bằng email, nếu không có thì tạo mới
-        const [user, created] = await db.User.findOrCreate({
-            where: { Email: email },
-            defaults: {
-                Username: profile.displayName.replace(/\s/g, '') + Date.now().toString().slice(-4), // Tạo username unique
-                Password: 'provided_by_google', // Mật khẩu không dùng cho OAuth
-                Role: 'user',
-                FullName: profile.displayName,
-                AvatarURL: profile.photos?.[0]?.value || null,
-            }
-        });
-        return done(null, user);
-      } catch (err) {
-        console.error("Google OAuth error:", err);
-        return done(err, null);
+// Chỉ setup Google OAuth nếu có credentials
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/auth/google/callback',
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const email = profile.emails[0].value;
+          const [user, created] = await db.User.findOrCreate({
+              where: { Email: email },
+              defaults: {
+                  Username: profile.displayName.replace(/\s/g, '') + Date.now().toString().slice(-4),
+                  Password: 'provided_by_google',
+                  Role: 'user',
+                  FullName: profile.displayName,
+                  AvatarURL: profile.photos?.[0]?.value || null,
+              }
+          });
+          return done(null, user);
+        } catch (err) {
+          console.error("Google OAuth error:", err);
+          return done(err, null);
+        }
       }
-    }
-  )
-);
+    )
+  );
+  console.log('✅ Google OAuth configured');
+} else {
+  console.log('⚠️ Google OAuth skipped (no credentials)');
+}
 
-passport.use(
-  new FacebookStrategy(
-    {
-      clientID: process.env.FACEBOOK_CLIENT_ID,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-      callbackURL: process.env.FACEBOOK_CALLBACK_URL,
-      profileFields: ["id", "displayName", "photos", "email"],
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const email = profile.emails?.[0]?.value || `${profile.id}@facebook-placeholder.com`;
-        const [user, created] = await db.User.findOrCreate({
-            where: { Email: email },
-            defaults: {
-                Username: profile.displayName.replace(/\s/g, '') + Date.now().toString().slice(-4),
-                Password: 'provided_by_facebook',
-                Role: 'user',
-                FullName: profile.displayName,
-                AvatarURL: profile.photos?.[0]?.value || null,
-            }
-        });
-        return done(null, user);
-      } catch (err) {
-        console.error("Facebook OAuth error:", err);
-        return done(err, null);
+// Chỉ setup Facebook OAuth nếu có credentials
+if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
+  passport.use(
+    new FacebookStrategy(
+      {
+        clientID: process.env.FACEBOOK_CLIENT_ID,
+        clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+        callbackURL: process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:5000/auth/facebook/callback',
+        profileFields: ["id", "displayName", "photos", "email"],
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const email = profile.emails?.[0]?.value || `${profile.id}@facebook-placeholder.com`;
+          const [user, created] = await db.User.findOrCreate({
+              where: { Email: email },
+              defaults: {
+                  Username: profile.displayName.replace(/\s/g, '') + Date.now().toString().slice(-4),
+                  Password: 'provided_by_facebook',
+                  Role: 'user',
+                  FullName: profile.displayName,
+                  AvatarURL: profile.photos?.[0]?.value || null,
+              }
+          });
+          return done(null, user);
+        } catch (err) {
+          console.error("Facebook OAuth error:", err);
+          return done(err, null);
+        }
       }
-    }
-  )
-);
+    )
+  );
+  console.log('✅ Facebook OAuth configured');
+} else {
+  console.log('⚠️ Facebook OAuth skipped (no credentials)');
+}
 
 console.log('✅ Passport configured');
 
