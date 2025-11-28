@@ -35,9 +35,9 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     const transaction = await queryInterface.sequelize.transaction();
     try {
-      // --- Lấy Category IDs ---
+      // --- Lấy Category IDs --- (Tương thích PostgreSQL)
       const categories = await queryInterface.sequelize.query(
-        "SELECT CategoryID, Name FROM Categories", {
+        `SELECT "CategoryID", "Name" FROM "Categories"`, {
           type: queryInterface.sequelize.QueryTypes.SELECT,
           transaction
         }
@@ -163,9 +163,9 @@ module.exports = {
       ];
       await queryInterface.bulkInsert('ProductVariants', allVariants, { transaction });
       
-      // --- Lấy lại Variant IDs vừa tạo ---
+      // --- Lấy lại Variant IDs vừa tạo --- (Tương thích PostgreSQL)
       const insertedVariants = await queryInterface.sequelize.query(
-        "SELECT VariantID, ProductID, Size, Color FROM ProductVariants", {
+        `SELECT "VariantID", "ProductID", "Size", "Color" FROM "ProductVariants"`, {
           type: queryInterface.sequelize.QueryTypes.SELECT,
           transaction
         }

@@ -10,9 +10,9 @@ module.exports = {
     // === SỬA LỖI VALIDATION: Đổi mật khẩu 'password' thành 'User123456' ===
     const hashedPasswordUser1 = await bcrypt.hash('User123456', salt);
 
-    // Kiểm tra xem users đã tồn tại chưa
+    // Kiểm tra xem users đã tồn tại chưa - tương thích cả MSSQL và PostgreSQL
     const existingUsers = await queryInterface.sequelize.query(
-      `SELECT Email FROM Users WHERE Email IN ('admin@example.com', 'user1@example.com')`,
+      `SELECT "Email" FROM "Users" WHERE "Email" IN ('admin@example.com', 'user1@example.com')`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -27,7 +27,7 @@ module.exports = {
         Address: '123 Lý Thường Kiệt, Hà Nội',
         TwoFactorEnabled: false,
         CreatedAt: new Date(),
-        UpdatedAt: new Date()
+        IsEmailVerified: true
       }, {
         Username: 'user1',
         Email: 'user1@example.com',
@@ -38,7 +38,7 @@ module.exports = {
         Address: '456 Trần Hưng Đạo, TP.HCM',
         TwoFactorEnabled: false,
         CreatedAt: new Date(),
-        UpdatedAt: new Date()
+        IsEmailVerified: true
       }], {});
     } else {
       console.log('Users already exist, skipping...');
