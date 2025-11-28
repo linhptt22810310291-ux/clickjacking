@@ -1,13 +1,20 @@
 'use strict';
 
+// 🔐 Load environment variables FIRST (before any other imports)
+const dotenv = require("dotenv");
+const path = require("path");
+
+// Load .env file (only needed for local development, Render sets env vars directly)
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: path.join(__dirname, '.env') });
+}
+
 const express = require("express");
 const cors = require("cors");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const FacebookStrategy = require("passport-facebook").Strategy;
-const dotenv = require("dotenv");
 const multer = require("multer");
-const path = require("path");
 const jwt = require("jsonwebtoken");
 const { expressjwt } = require('express-jwt');
 const fs = require("fs");
@@ -49,9 +56,6 @@ const { sessionMiddleware: captchaSession, generateCaptcha, verifyCaptcha } = re
 const { csrfProtection, verifyCsrfToken, getCsrfToken } = require('./middleware/csrf.middleware');
 const { firewallMiddleware, ipRateLimit } = require('./middleware/firewall.middleware');
 const { verifyEmailToken, resendVerificationEmail } = require('./services/emailVerification.service');
-
-// Load .env từ thư mục backend
-dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 
