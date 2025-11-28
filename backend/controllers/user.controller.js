@@ -6,6 +6,34 @@ const fs = require('fs');
 const path = require('path');
 const emailService = require('../services/email.service');
 const crypto = require('crypto'); // Đã import
+const cloudinaryConfig = require('../config/cloudinary.config');
+
+// Helper function to upload avatar
+const uploadAvatar = async (file) => {
+    if (!file) return null;
+    
+    // In production, upload to Cloudinary
+    if (process.env.NODE_ENV === 'production') {
+        try {
+            const result = await cloudinaryConfig.uploadImage(file.path, 'avatars');
+            // Delete local temp file after upload
+            if (fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+            if (result.success) {
+                return result.url;
+            }
+            console.error('Cloudinary upload failed:', result.error);
+            return null;
+        } catch (error) {
+            console.error('Avatar upload error:', error);
+            return null;
+        }
+    }
+    
+    // In development, use local storage
+    return `/uploads/${file.filename}`;
+};
 
 // ... (Giữ nguyên các hàm getAllUsers, getUserById, createUser, updateUser, deleteUser) ...
 
@@ -65,7 +93,7 @@ exports.createUser = async (req, res) => {
         if (existingUser) return res.status(409).json({ errors: [{ msg: 'Tên đăng nhập hoặc email đã tồn tại' }] });
 
         const hashedPassword = await bcrypt.hash(Password, 10);
-        const avatarUrl = req.file ? `/uploads/${req.file.filename}` : null;
+        const avatarUrl = await uploadAvatar(req.file);
 
         const newUser = await db.User.create({
             Username, Email, Password: hashedPassword, Role, FullName, Phone, Address, AvatarURL: avatarUrl
@@ -76,6 +104,7 @@ exports.createUser = async (req, res) => {
 
         res.status(201).json({ message: 'Thêm người dùng thành công', user: userJson });
     } catch (error) {
+        console.error('Create user error:', error);
         res.status(500).json({ errors: [{ msg: 'Lỗi khi thêm người dùng' }] });
     }
 };
@@ -91,11 +120,19 @@ exports.updateUser = async (req, res) => {
             if (existing) return res.status(409).json({ errors: [{ msg: 'Email đã được sử dụng' }] });
         }
 
-        if (req.file && user.AvatarURL) {
-            const oldAvatarPath = path.join(__dirname, '../../', user.AvatarURL);
-            if (fs.existsSync(oldAvatarPath)) fs.unlinkSync(oldAvatarPath);
+        // Handle avatar upload
+        if (req.file) {
+            // Delete old avatar if it's a local file (not Cloudinary URL)
+            if (user.AvatarURL && !user.AvatarURL.startsWith('http')) {
+                const oldAvatarPath = path.join(__dirname, '../../', user.AvatarURL);
+                if (fs.existsSync(oldAvatarPath)) fs.unlinkSync(oldAvatarPath);
+            }
+            // Upload new avatar
+            const newAvatarUrl = await uploadAvatar(req.file);
+            if (newAvatarUrl) {
+                req.body.AvatarURL = newAvatarUrl;
+            }
         }
-        if(req.file) req.body.AvatarURL = `/uploads/${req.file.filename}`;
         
         const { Password, ...updateData } = req.body;
         delete updateData.TwoFactorEnabled;
@@ -108,6 +145,7 @@ exports.updateUser = async (req, res) => {
 
         res.json({ message: 'Cập nhật người dùng thành công', user: userJson });
     } catch (error) {
+        console.error('Update user error:', error);
         res.status(500).json({ errors: [{ msg: 'Lỗi máy chủ' }] });
     }
 };

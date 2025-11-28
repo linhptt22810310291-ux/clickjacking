@@ -2,8 +2,38 @@
 const db = require('../models');
 const { Op } = require('sequelize');
 const path = require('path');
+const fs = require('fs');
 const dotenv = require("dotenv");
 dotenv.config();
+const cloudinaryConfig = require('../config/cloudinary.config');
+
+// Helper function to upload avatar
+const uploadAvatar = async (file) => {
+    if (!file) return null;
+    
+    // In production, upload to Cloudinary
+    if (process.env.NODE_ENV === 'production') {
+        try {
+            const result = await cloudinaryConfig.uploadImage(file.path, 'avatars');
+            // Delete local temp file after upload
+            if (fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+            if (result.success) {
+                return result.url;
+            }
+            console.error('Cloudinary upload failed:', result.error);
+            return null;
+        } catch (error) {
+            console.error('Avatar upload error:', error);
+            return null;
+        }
+    }
+    
+    // In development, use local storage
+    return `/uploads/${file.filename}`;
+};
+
 /**
  * @route   GET /api/profile
  * @desc    Lấy thông tin profile của user hiện tại
@@ -21,13 +51,18 @@ exports.getProfile = async (req, res) => {
         }
         
         // Tạo object trả về nhất quán
+        // Nếu AvatarURL đã là URL đầy đủ (Cloudinary), trả về nguyên, nếu không thì thêm BASE_URL
+        const avatarUrl = user.AvatarURL 
+            ? (user.AvatarURL.startsWith('http') ? user.AvatarURL : `${BASE_URL}${user.AvatarURL}`)
+            : null;
+            
         const userProfile = {
             id: user.UserID,
             username: user.Username,
             email: user.Email,
             fullName: user.FullName, // Chuyển thành camelCase
             phone: user.Phone,
-            avatar: user.AvatarURL ? `${BASE_URL}${user.AvatarURL}` : null
+            avatar: avatarUrl
         };
 
         res.json(userProfile);
@@ -70,8 +105,16 @@ exports.updateProfile = async (req, res) => {
 
         // Cập nhật avatar nếu có file mới
         if (req.file) {
-            // (Thêm logic xóa file avatar cũ nếu cần)
-            user.AvatarURL = `/uploads/${req.file.filename}`;
+            // Delete old local avatar if exists
+            if (user.AvatarURL && !user.AvatarURL.startsWith('http')) {
+                const oldPath = path.join(__dirname, '../../', user.AvatarURL);
+                if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+            }
+            // Upload new avatar
+            const newAvatarUrl = await uploadAvatar(req.file);
+            if (newAvatarUrl) {
+                user.AvatarURL = newAvatarUrl;
+            }
         }
         
         await user.save();

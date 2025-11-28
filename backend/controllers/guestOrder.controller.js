@@ -76,11 +76,17 @@ exports.placeGuestOrder = async (req, res) => {
                 req.socket.remoteAddress ||
                 (req.connection.socket && req.connection.socket.remoteAddress);
 
+            // Auto-detect return URL for production vs localhost
+            const vnpayReturnUrl = process.env.VNPAY_RETURN_URL || 
+                (process.env.NODE_ENV === 'production' 
+                  ? 'https://clickjacking-frontend.onrender.com/payment-result'
+                  : 'http://localhost:3000/payment-result');
+            
             const paymentUrl = createPaymentUrl(
             ipAddr,
             newOrder.TotalAmount,
             `GUEST_${newOrder.GuestOrderID}`,  // ✅
-            process.env.VNPAY_RETURN_URL,
+            vnpayReturnUrl,
             `Thanh toan don hang ${newOrder.GuestOrderID}`
             );
 
@@ -154,11 +160,17 @@ exports.retryGuestVnpayPayment = async (req, res) => {
             req.socket.remoteAddress ||
             (req.connection.socket && req.connection.socket.remoteAddress);
 
+        // Auto-detect return URL for production vs localhost
+        const vnpayReturnUrl = process.env.VNPAY_RETURN_URL || 
+            (process.env.NODE_ENV === 'production' 
+              ? 'https://clickjacking-frontend.onrender.com/payment-result'
+              : 'http://localhost:3000/payment-result');
+
         const paymentUrl = createPaymentUrl(
             ipAddr,
             order.TotalAmount,
             `GUEST_${order.GuestOrderID}`,     // ✅
-            process.env.VNPAY_RETURN_URL,
+            vnpayReturnUrl,
             `Thanh toan lai don hang ${order.GuestOrderID}`
             );
 

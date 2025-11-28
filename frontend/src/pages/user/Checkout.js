@@ -238,7 +238,7 @@ export default function Checkout() {
       }
       if (providers.length > 0 && !shippingProviderId) {
         setShippingProviderId(providers[0].ProviderID);
-        setShippingFee(providers[0].Fee || 0);
+        setShippingFee(parseFloat(providers[0].Fee) || 0);
       }
       if (paymentMethods.length > 0 && !paymentMethod) {
         setPaymentMethod(paymentMethods[0].Code);
@@ -258,16 +258,18 @@ export default function Checkout() {
   const subtotal = useMemo(
     () =>
       items.reduce(
-        (total, item) =>
-          total +
-        (item.price ?? item.Price ?? item.variant?.Price ?? 0) * (item.quantity ?? item.Quantity),
+        (total, item) => {
+          const price = parseFloat(item.price ?? item.Price ?? item.variant?.Price ?? 0);
+          const qty = parseInt(item.quantity ?? item.Quantity, 10) || 0;
+          return total + (price * qty);
+        },
         0
       ),
     [items]
   );
 
   const grandTotal = useMemo(
-    () => Math.max(0, subtotal - couponDiscount + shippingFee),
+    () => Math.max(0, Math.round(subtotal - couponDiscount + parseFloat(shippingFee || 0))),
     [subtotal, couponDiscount, shippingFee]
   );
 
@@ -650,20 +652,20 @@ export default function Checkout() {
                     type="radio"
                     name="provider"
                     id={`provider-${p.ProviderID}`}
-                    label={`${p.Name} - ${(
-                      p.Fee || 0
+                    label={`${p.Name} - ${Math.round(
+                      parseFloat(p.Fee) || 0
                     ).toLocaleString("vi-VN")}₫`}
                     checked={shippingProviderId === p.ProviderID}
                     onChange={() => {
                       setShippingProviderId(p.ProviderID);
-                      setShippingFee(p.Fee || 0);
+                      setShippingFee(parseFloat(p.Fee) || 0);
                     }}
                   />
                 ))
               ) : (
                 <div className="text-muted d-flex align-items-center">
                   <FaTruck className="me-2" />
-                  Giao Hàng Nhanh (GHN) - {shippingFee.toLocaleString("vi-VN")}₫
+                  Giao Hàng Nhanh (GHN) - {Math.round(parseFloat(shippingFee) || 0).toLocaleString("vi-VN")}₫
                 </div>
               )}
             </Card.Body>
@@ -788,7 +790,7 @@ export default function Checkout() {
               </div>
               <div className="d-flex justify-content-between mb-1">
                 <span>Phí vận chuyển</span>
-                <span>{shippingFee.toLocaleString("vi-VN")}₫</span>
+                <span>{Math.round(parseFloat(shippingFee) || 0).toLocaleString("vi-VN")}₫</span>
               </div>
               <div className="d-flex justify-content-between fw-bold h5 mt-2">
                 <span>Tổng thanh toán</span>
