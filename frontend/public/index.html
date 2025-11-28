@@ -7,18 +7,10 @@
     
     <script>
       // ⚙️ CẤU HÌNH - ĐỔI GIÁ TRỊ NÀY ĐỂ BẬT/TẮT BẢO VỆ
-      var ENABLE_CLICKJACKING_PROTECTION = true ;  // true = BẬT | false = TẮT
-    </script>
-    
-    <!-- 🛡️ CSP Header (chỉ hoạt động khi bật) -->
-    <script>
-      if (ENABLE_CLICKJACKING_PROTECTION) {
-        // Thêm CSP meta tag động
-        var meta = document.createElement('meta');
-        meta.httpEquiv = 'Content-Security-Policy';
-        meta.content = "frame-ancestors 'none'";
-        document.head.appendChild(meta);
-      }
+      var ENABLE_CLICKJACKING_PROTECTION = true;  // true = BẬT | false = TẮT
+      
+      // ℹ️ LƯU Ý: CSP frame-ancestors được gửi qua HTTP Header từ backend
+      // (không thể set qua <meta> tag theo tiêu chuẩn W3C)
     </script>
     
     <!-- 🛡️ Frame-Busting Protection -->

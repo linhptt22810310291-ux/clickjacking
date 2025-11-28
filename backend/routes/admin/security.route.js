@@ -12,6 +12,9 @@ const logger = require('../../utils/logger');
 // 🆕 Import từ security.middleware để lấy rate limit stats
 const { getRateLimitStats } = require('../../middleware/security.middleware');
 
+// 🆕 Import từ firewall.middleware để lấy firewall stats
+const { getFirewallStats } = require('../../middleware/firewall.middleware');
+
 // Middleware: Kiểm tra admin (giả định bạn đã có middleware này)
 const checkAdmin = require('../../middleware/checkAdmin');
 const authenticateToken = require('../../middleware/auth.middleware');
@@ -19,20 +22,39 @@ const authenticateToken = require('../../middleware/auth.middleware');
 /**
  * GET /api/security/stats
  * Lấy thống kê tổng quan về bot attacks (PUBLIC - không cần đăng nhập)
- * 🆕 Lấy từ security.middleware (rate limit stats)
+ * 🆕 Kết hợp stats từ CẢ security.middleware VÀ firewall.middleware
  */
 router.get('/stats', async (req, res) => {
   try {
-    // Lấy stats từ security.middleware (rate limit tracking)
+    // Lấy stats từ security.middleware (API rate limit)
     const rateLimitStats = getRateLimitStats();
+    
+    // 🆕 Lấy stats từ firewall.middleware (IP rate limit)
+    const firewallStats = getFirewallStats();
+    
+    // Kết hợp cả 2 nguồn stats
+    const combinedBlockedIPs = new Set([
+      ...(rateLimitStats.blockedIPs || []),
+      ...(firewallStats.blockedIPs || [])
+    ]);
+    
+    const combinedLogs = [
+      ...(rateLimitStats.recentLogs || []),
+      ...(firewallStats.recentLogs || [])
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 100);
     
     res.json({
       success: true,
       data: {
-        totalBotAttacks: rateLimitStats.totalBlocked || 0,
-        blockedIPs: rateLimitStats.blockedIPs || [],
-        blockedCount: rateLimitStats.blockedCount || 0,
-        recentLogs: rateLimitStats.recentLogs || [],
+        totalBotAttacks: (rateLimitStats.totalBlocked || 0) + (firewallStats.totalBlocked || 0),
+        blockedIPs: Array.from(combinedBlockedIPs),
+        blockedCount: combinedBlockedIPs.size,
+        recentLogs: combinedLogs,
+        // Chi tiết từng nguồn (để debug)
+        sources: {
+          apiRateLimit: rateLimitStats.totalBlocked || 0,
+          ipFirewall: firewallStats.totalBlocked || 0
+        },
         timestamp: new Date().toISOString()
       }
     });
@@ -164,22 +186,36 @@ router.get('/logs/:filename', authenticateToken, checkAdmin, async (req, res) =>
 /**
  * GET /api/security/recent-attacks
  * Lấy danh sách các cuộc tấn công gần đây (PUBLIC - không cần đăng nhập)
- * 🆕 Lấy từ security.middleware (real-time logs)
+ * 🆕 Kết hợp logs từ CẢ security.middleware VÀ firewall.middleware
  */
 router.get('/recent-attacks', async (req, res) => {
   try {
-    // Lấy real-time logs từ security.middleware
+    // Lấy real-time logs từ cả 2 nguồn
     const rateLimitStats = getRateLimitStats();
-    const recentLogs = rateLimitStats.recentLogs || [];
+    const firewallStats = getFirewallStats();
+    
+    // Kết hợp logs từ cả 2 middleware
+    const allLogs = [
+      ...(rateLimitStats.recentLogs || []),
+      ...(firewallStats.recentLogs || [])
+    ];
+    
+    // Sort theo thời gian (mới nhất lên đầu)
+    const sortedLogs = allLogs.sort((a, b) => 
+      new Date(b.timestamp) - new Date(a.timestamp)
+    ).slice(0, 100); // Giới hạn 100 logs
     
     // Format logs cho frontend
-    const attacks = recentLogs.map(log => ({
+    const attacks = sortedLogs.map(log => ({
       timestamp: log.timestamp,
       ip: log.ip,
-      reason: log.type === 'RATE_LIMIT' ? 'Rate limit exceeded' : 'Bot behavior detected',
-      endpoint: log.path || '/api/products',
-      action: 'BLOCKED'
-    })).reverse(); // Mới nhất lên đầu
+      reason: log.type === 'RATE_LIMIT' ? 'API Rate limit exceeded' : 
+              log.type === 'IP_RATE_LIMIT' ? 'IP Rate limit exceeded' : 
+              'Bot behavior detected',
+      endpoint: log.path || '/api/unknown',
+      action: 'BLOCKED',
+      requestCount: log.requestCount || null
+    }));
     
     res.json({
       success: true,

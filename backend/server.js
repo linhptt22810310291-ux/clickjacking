@@ -102,7 +102,21 @@ app.use(sessionManager);
 app.use(firewallMiddleware);
 
 // 🚦 8. IP-based Rate Limiting (BẬT) - Chống DDoS cấp IP
-app.use(ipRateLimit(100, 60000)); // 100 requests / 60 giây
+// Loại trừ các routes quan trọng khỏi rate limit
+app.use((req, res, next) => {
+  // Skip rate limit cho các routes cần thiết
+  const skipPaths = [
+    '/api/security',    // Security dashboard
+    '/api/bot-stats',   // Bot statistics
+    '/api/captcha',     // CAPTCHA generation (cần cho login)
+    '/api/home',        // Trang chủ
+  ];
+  
+  if (skipPaths.some(path => req.path.startsWith(path))) {
+    return next();
+  }
+  return ipRateLimit(100, 60000)(req, res, next); // 100 requests / 60 giây
+});
 
 // ✅ SECURITY STATUS - TẤT CẢ ĐÃ BẬT:
 // ✅ CAPTCHA Session: ENABLED (required for login captcha)

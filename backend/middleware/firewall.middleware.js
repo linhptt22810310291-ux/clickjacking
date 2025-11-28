@@ -13,6 +13,13 @@ const blockedIPsFile = path.join(__dirname, '../data/blocked-ips.json');
 let blockedIPs = new Set();
 let suspiciousIPs = new Map(); // IP -> { count, firstSeen, lastSeen }
 
+// 🆕 Stats để sync với Security Dashboard
+const firewallStats = {
+  totalBlocked: 0,
+  blockedIPs: new Set(),
+  recentLogs: []
+};
+
 // Load blocked IPs from file
 const loadBlockedIPs = () => {
   try {
@@ -111,8 +118,24 @@ const trackSuspiciousIP = (ip) => {
 const firewallMiddleware = (req, res, next) => {
   const ip = getClientIP(req);
 
-  // Check if IP is blocked
-  if (isIPBlocked(ip)) {
+  // 🛡️ WHITELIST - Cấu hình theo môi trường
+  // Development: Whitelist localhost để test
+  // Production: Chỉ whitelist IP của server nếu cần
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // Whitelist IPs từ biến môi trường (cách nhau bởi dấu phẩy)
+  // Ví dụ: WHITELIST_IPS=10.0.0.1,192.168.1.1
+  const whitelistFromEnv = process.env.WHITELIST_IPS ? process.env.WHITELIST_IPS.split(',') : [];
+  
+  // Development: thêm localhost vào whitelist
+  // Production: chỉ dùng WHITELIST_IPS từ .env
+  const localhostIPs = ['::1', '127.0.0.1', '::ffff:127.0.0.1', 'localhost'];
+  const whitelist = isProduction ? whitelistFromEnv : [...localhostIPs, ...whitelistFromEnv];
+  
+  const isWhitelisted = whitelist.includes(ip);
+
+  // Check if IP is blocked (trừ whitelist)
+  if (!isWhitelisted && isIPBlocked(ip)) {
     console.warn(`🚫 Blocked IP attempted access: ${ip}`);
     return res.status(403).json({
       success: false,
@@ -176,6 +199,24 @@ const ipRateLimit = (maxRequests = 100, windowMs = 60000) => {
         if (data.count > maxRequests) {
           console.warn(`⚠️ Rate limit exceeded for IP: ${ip} (${data.count} requests)`);
           trackSuspiciousIP(ip);
+          
+          // 🆕 Track vào firewallStats để sync với dashboard
+          firewallStats.totalBlocked++;
+          firewallStats.blockedIPs.add(ip);
+          firewallStats.recentLogs.push({
+            timestamp: new Date().toISOString(),
+            ip: ip,
+            path: req.path || req.url,
+            type: 'IP_RATE_LIMIT',
+            requestCount: data.count
+          });
+          
+          // Giữ tối đa 100 logs
+          if (firewallStats.recentLogs.length > 100) {
+            firewallStats.recentLogs = firewallStats.recentLogs.slice(-100);
+          }
+          
+          console.log(`📊 Firewall stats: ${firewallStats.totalBlocked} blocked, ${firewallStats.blockedIPs.size} IPs`);
           
           return res.status(429).json({
             success: false,
@@ -255,6 +296,14 @@ const removeBlockedIP = (req, res) => {
   });
 };
 
+// 🆕 Export function để lấy firewall stats cho dashboard
+const getFirewallStats = () => ({
+  totalBlocked: firewallStats.totalBlocked,
+  blockedIPs: Array.from(firewallStats.blockedIPs),
+  blockedCount: firewallStats.blockedIPs.size,
+  recentLogs: firewallStats.recentLogs
+});
+
 module.exports = {
   firewallMiddleware,
   ipRateLimit,
@@ -265,4 +314,5 @@ module.exports = {
   getBlockedIPs,
   addBlockedIP,
   removeBlockedIP,
+  getFirewallStats, // 🆕 Export stats
 };
