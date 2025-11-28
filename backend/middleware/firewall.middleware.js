@@ -118,6 +118,16 @@ const trackSuspiciousIP = (ip) => {
 const firewallMiddleware = (req, res, next) => {
   const ip = getClientIP(req);
 
+  // 🆘 EMERGENCY UNBLOCK - Xử lý TRƯỚC khi check blocked
+  // Chỉ cho phép route này bypass IP block check (KHÔNG bypass các security khác)
+  // Route này vẫn phải qua các kiểm tra suspicious patterns phía dưới
+  if (req.path === '/api/security/emergency-unblock' && req.method === 'POST') {
+    // Vẫn log request này để biết ai đang cố unblock
+    console.log(`🆘 Emergency unblock attempt from IP: ${ip}`);
+    req.clientIP = ip;
+    return next(); // Bypass chỉ IP block check, các middleware khác vẫn chạy
+  }
+
   // 🛡️ WHITELIST - Cấu hình theo môi trường
   // Development: Whitelist localhost để test
   // Production: Chỉ whitelist IP của server nếu cần
