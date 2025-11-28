@@ -1,5 +1,9 @@
 'use strict';
 
+console.log('🚀 Server starting...');
+console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
+console.log('🔧 DATABASE_URL exists:', !!process.env.DATABASE_URL);
+
 // 🔐 Load environment variables FIRST (before any other imports)
 const dotenv = require("dotenv");
 const path = require("path");
@@ -9,20 +13,37 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: path.join(__dirname, '.env') });
 }
 
-const express = require("express");
-const cors = require("cors");
-const passport = require("passport");
-const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const FacebookStrategy = require("passport-facebook").Strategy;
-const multer = require("multer");
-const jwt = require("jsonwebtoken");
-const { expressjwt } = require('express-jwt');
-const fs = require("fs");
-const axios = require("axios");
+console.log('✅ Dotenv loaded');
+
+let express, cors, passport, GoogleStrategy, FacebookStrategy, multer, jwt, expressjwt, fs, axios;
+let db;
+
+try {
+  express = require("express");
+  cors = require("cors");
+  passport = require("passport");
+  GoogleStrategy = require("passport-google-oauth20").Strategy;
+  FacebookStrategy = require("passport-facebook").Strategy;
+  multer = require("multer");
+  jwt = require("jsonwebtoken");
+  expressjwt = require('express-jwt').expressjwt;
+  fs = require("fs");
+  axios = require("axios");
+  console.log('✅ Core modules loaded');
+} catch (err) {
+  console.error('❌ Error loading core modules:', err.message);
+  process.exit(1);
+}
 
 // --- TÍCH HỢP SEQUELIZE ---
-// --- Nạp đối tượng db chứa sequelize instance và tất cả các model
-const db = require('./models');
+try {
+  db = require('./models');
+  console.log('✅ Database models loaded');
+} catch (err) {
+  console.error('❌ Error loading database models:', err.message);
+  console.error(err.stack);
+  process.exit(1);
+}
 
 // 🚨 SIMPLE LOGGER (không dùng winston để tránh crash)
 const logger = {
