@@ -96,26 +96,29 @@ export default function Home() {
     },
   ];
 
+  // Cloudinary base URL for category images
+  const CLOUDINARY_BASE = "https://res.cloudinary.com/ddduuddmz/image/upload/v1764329879/webgiay";
+
   const FEATURED_CATEGORIES = [
     {
       key: "sneaker",
       label: "Sneaker",
-      img: `${API_BASE_URL}/uploads/SNEAKER/UNISEX/sneaker10trang.jpg`,
+      img: `${CLOUDINARY_BASE}/SNEAKER/UNISEX/sneaker10trang.jpg`,
     },
     {
       key: "sandal",
       label: "Sandal",
-      img: `${API_BASE_URL}/uploads/SANDAL/WOMEN/sandal2den.jpg`,
+      img: `${CLOUDINARY_BASE}/SANDAL/WOMEN/sandal2den.jpg`,
     },
     {
       key: "office",
       label: "Công sở",
-      img: `${API_BASE_URL}/uploads/OFFICE/MEN/office1den.jpg`,
+      img: `${CLOUDINARY_BASE}/OFFICE/MEN/office1den.jpg`,
     },
     {
       key: "sport",
       label: "Thể thao",
-      img: `${API_BASE_URL}/uploads/SPORT/MEN/sport10trang.jpg`,
+      img: `${CLOUDINARY_BASE}/SPORT/MEN/sport10trang.jpg`,
     },
   ];
 

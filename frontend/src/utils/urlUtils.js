@@ -2,6 +2,7 @@
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000';
 const PLACEHOLDER_IMAGE = 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image';
+const DEFAULT_AVATAR = 'https://placehold.co/100x100/e2e8f0/64748b?text=User';
 
 /**
  * Resolve image URL - handles both relative paths and full URLs (like Cloudinary)
@@ -28,7 +29,7 @@ export const resolveImageUrl = (imagePath, placeholder = PLACEHOLDER_IMAGE) => {
 export const resolveAvatarUrl = (avatarPath) => {
   // Nếu không có avatar, trả về ảnh mặc định
   if (!avatarPath) {
-    return '/default-avatar.png'; // Đảm bảo file này có trong thư mục /public
+    return DEFAULT_AVATAR;  // Sử dụng placeholder online
   }
 
   // Nếu đã là URL đầy đủ (từ Google, Facebook), trả về chính nó

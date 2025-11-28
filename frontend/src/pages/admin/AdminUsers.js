@@ -31,7 +31,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 
 const resolveAvatarUrl = (url) => {
     if (!url) {
-        return '/default-avatar.png';
+        return 'https://placehold.co/100x100/e2e8f0/64748b?text=User';
     }
     if (url.startsWith('http://') || url.startsWith('https://')) {
         return url;

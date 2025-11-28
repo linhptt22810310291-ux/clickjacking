@@ -18,7 +18,7 @@ import { getReviewByIdAdminAPI } from '../../api';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 const resolveMediaUrl = (url) => {
-    if (!url) return '/default-avatar.png';
+    if (!url) return 'https://placehold.co/100x100/e2e8f0/64748b?text=User';
     if (url.startsWith('http')) return url;
     return `${API_BASE_URL}${url}`;
 };
