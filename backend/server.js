@@ -122,15 +122,22 @@ try {
 console.log('✅ All middleware loaded successfully');
 
 const app = express();
+console.log('✅ Express app created');
 
 /* ---------------- SECURITY MIDDLEWARES (Áp dụng đầu tiên) ---------------- */
-// 🔐 1. HTTP Security Headers (Helmet) - CSP được set loose cho development
-app.use(helmetMiddleware);
+try {
+  // 🔐 1. HTTP Security Headers (Helmet) - CSP được set loose cho development
+  app.use(helmetMiddleware);
+  console.log('✅ Helmet applied');
 
-// 🔒 2. HTTPS Enforcement (chỉ trong production)
-if (process.env.NODE_ENV === 'production') {
-  app.use(enforceHTTPS);
-  app.use(additionalSecurityHeaders); // Chỉ thêm strict headers trong production
+  // 🔒 2. HTTPS Enforcement (chỉ trong production)
+  if (process.env.NODE_ENV === 'production') {
+    app.use(enforceHTTPS);
+    app.use(additionalSecurityHeaders); // Chỉ thêm strict headers trong production
+    console.log('✅ HTTPS enforcement applied');
+  }
+} catch (err) {
+  console.error('❌ Error applying security middleware:', err.message);
 }
 
 // 🧹 3. Data Sanitization - Chống Injection Attacks (Chỉ cho API routes, không cho static files)
@@ -139,15 +146,19 @@ if (process.env.NODE_ENV === 'production') {
 /* ---------------- CORS & Middlewares cơ bản ---------------- */
 const corsOptions = {
   origin: function (origin, callback) {
-    // Cho phép requests từ:
-    // 1. Frontend React (localhost:3000)
-    // 2. Bot Control Panel (file:// = origin null)
-    // 3. Không có origin (Postman, curl, bot scripts)
-    const allowedOrigins = ['http://localhost:3000', 'http://localhost:5000'];
+    // Cho phép tất cả origins trong production để frontend Render có thể truy cập
+    const allowedOrigins = [
+      'http://localhost:3000', 
+      'http://localhost:5000',
+      'https://clickjacking-frontend.onrender.com',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
+    
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // Cho phép tất cả trong development
+      // Trong production, cho phép tất cả origins (tạm thời)
+      callback(null, true);
     }
   },
   credentials: true,
@@ -155,19 +166,29 @@ const corsOptions = {
   exposedHeaders: ['X-Session-ID'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 };
-app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// ⚠️ RE-ENABLE CAPTCHA SESSION (needed for login)
-// 🔐 CAPTCHA Session (must be before other session middlewares)
-app.use(captchaSession);
+try {
+  app.use(cors(corsOptions));
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  console.log('✅ CORS and body parsers applied');
 
-// 🔐 6. Session Management
-app.use(sessionManager);
+  // ⚠️ RE-ENABLE CAPTCHA SESSION (needed for login)
+  // 🔐 CAPTCHA Session (must be before other session middlewares)
+  app.use(captchaSession);
+  console.log('✅ Captcha session applied');
 
-// 🔥 7. FIREWALL - Block malicious IPs (BẬT)
-app.use(firewallMiddleware);
+  // 🔐 6. Session Management
+  app.use(sessionManager);
+  console.log('✅ Session manager applied');
+
+  // 🔥 7. FIREWALL - Block malicious IPs (BẬT)
+  app.use(firewallMiddleware);
+  console.log('✅ Firewall applied');
+} catch (err) {
+  console.error('❌ Error applying app middleware:', err.message);
+  console.error(err.stack);
+}
 
 // 🚦 8. IP-based Rate Limiting (BẬT) - Chống DDoS cấp IP
 // Loại trừ các routes quan trọng khỏi rate limit
@@ -344,42 +365,81 @@ passport.use(
   )
 );
 
+console.log('✅ Passport configured');
 
 /* ---------------- IMPORT ROUTERS (Đã được refactor) ---------------- */
-// User-facing routes
-const authRouter = require('./routes/user/auth');
-const profileRouter = require('./routes/user/profile');
-const productsUserRouter = require('./routes/user/productsUser');
-const cartUserRouter = require('./routes/user/cartUser');
-const blogsUserRouter = require('./routes/user/blogsUser');
-const addressesUserRouter = require('./routes/user/addressesUser');
-const homeRouter = require('./routes/user/homeUser');
-const userCouponsRoute = require('./routes/user/coupons');
-const shippingRouter = require('./routes/user/shipping');
-const userPaymentMethodsRouter = require('./routes/user/paymentMethods');
-const { userOrdersRouter, guestOrdersRouter } = require('./routes/user/ordersUser');
-const guestHistoryRouter = require('./routes/user/guestHistory');
-const passwordRouter = require('./routes/user/password');
-const wishlistUserRouter = require('./routes/user/wishlist');
-const paymentRoutes = require('./routes/payment.route');
-// Admin routes
-const adminAuthRoutes = require("./routes/admin/authAdmin");
-const adminBlogsRouter = require("./routes/admin/blogsAdmin");
-const adminCategoriesRouter = require("./routes/admin/categoriesAdmin");
-const adminCouponsRouter = require("./routes/admin/couponsAdmin");
-const adminDashboardRouter = require("./routes/admin/homeAdmin");
-const adminOrdersRouter = require("./routes/admin/ordersAdmin");
-const adminPaymentMethodsRouter = require("./routes/admin/paymentMethods");
-const adminProductsRouter = require("./routes/admin/productsAdmin");
-const adminReviewsRouter = require("./routes/admin/reviews");
-const adminUsersRouter = require("./routes/admin/usersAdmin")(upload); // Truyền `upload` vào cho route này
+console.log('📦 Loading routes...');
 
-const paymentRouter = require('./routes/payment.route');
-app.use('/api/payment', paymentRouter);
+try {
+  // User-facing routes
+  var authRouter = require('./routes/user/auth');
+  console.log('  ✅ auth route');
+  var profileRouter = require('./routes/user/profile');
+  console.log('  ✅ profile route');
+  var productsUserRouter = require('./routes/user/productsUser');
+  console.log('  ✅ products route');
+  var cartUserRouter = require('./routes/user/cartUser');
+  console.log('  ✅ cart route');
+  var blogsUserRouter = require('./routes/user/blogsUser');
+  console.log('  ✅ blogs route');
+  var addressesUserRouter = require('./routes/user/addressesUser');
+  console.log('  ✅ addresses route');
+  var homeRouter = require('./routes/user/homeUser');
+  console.log('  ✅ home route');
+  var userCouponsRoute = require('./routes/user/coupons');
+  console.log('  ✅ coupons route');
+  var shippingRouter = require('./routes/user/shipping');
+  console.log('  ✅ shipping route');
+  var userPaymentMethodsRouter = require('./routes/user/paymentMethods');
+  console.log('  ✅ paymentMethods route');
+  var { userOrdersRouter, guestOrdersRouter } = require('./routes/user/ordersUser');
+  console.log('  ✅ orders route');
+  var guestHistoryRouter = require('./routes/user/guestHistory');
+  console.log('  ✅ guestHistory route');
+  var passwordRouter = require('./routes/user/password');
+  console.log('  ✅ password route');
+  var wishlistUserRouter = require('./routes/user/wishlist');
+  console.log('  ✅ wishlist route');
+  var paymentRoutes = require('./routes/payment.route');
+  console.log('  ✅ payment route');
+  
+  // Admin routes
+  var adminAuthRoutes = require("./routes/admin/authAdmin");
+  console.log('  ✅ admin auth route');
+  var adminBlogsRouter = require("./routes/admin/blogsAdmin");
+  console.log('  ✅ admin blogs route');
+  var adminCategoriesRouter = require("./routes/admin/categoriesAdmin");
+  console.log('  ✅ admin categories route');
+  var adminCouponsRouter = require("./routes/admin/couponsAdmin");
+  console.log('  ✅ admin coupons route');
+  var adminDashboardRouter = require("./routes/admin/homeAdmin");
+  console.log('  ✅ admin dashboard route');
+  var adminOrdersRouter = require("./routes/admin/ordersAdmin");
+  console.log('  ✅ admin orders route');
+  var adminPaymentMethodsRouter = require("./routes/admin/paymentMethods");
+  console.log('  ✅ admin paymentMethods route');
+  var adminProductsRouter = require("./routes/admin/productsAdmin");
+  console.log('  ✅ admin products route');
+  var adminReviewsRouter = require("./routes/admin/reviews");
+  console.log('  ✅ admin reviews route');
+  var adminUsersRouter = require("./routes/admin/usersAdmin")(upload);
+  console.log('  ✅ admin users route');
 
-// 🛡️ Bot Detection & Stats Routes
-const { trackPageVisit, detectBot } = require('./middleware/botDetection');
-const botStatsRouter = require('./routes/bot-stats.route');
+  var paymentRouter = require('./routes/payment.route');
+  app.use('/api/payment', paymentRouter);
+  console.log('  ✅ payment router mounted');
+
+  // 🛡️ Bot Detection & Stats Routes
+  var { trackPageVisit, detectBot } = require('./middleware/botDetection');
+  var botStatsRouter = require('./routes/bot-stats.route');
+  console.log('  ✅ bot stats route');
+  
+  console.log('✅ All routes loaded successfully');
+} catch (err) {
+  console.error('❌ Error loading routes:', err.message);
+  console.error(err.stack);
+  process.exit(1);
+}
 
 /* ---------------- USE ROUTERS (Tổ chức lại theo prefix) ---------------- */
 const apiRouter = express.Router();
