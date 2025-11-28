@@ -1,6 +1,7 @@
 'use strict';
 const db = require('../models');
 const { Sequelize } = require('sequelize');
+const { isPostgres } = require('../utils/dbHelper');
 
 /**
  * @desc    Lấy danh sách ID sản phẩm yêu thích của user. Dùng để đồng bộ trạng thái nhanh.
@@ -36,9 +37,17 @@ exports.getPaginatedWishlist = async (req, res) => {
         const pageSize = Math.min(50, Math.max(1, parseInt(req.query.pageSize, 10) || 8));
         const offset = (page - 1) * pageSize;
 
-        const defaultImageSubquery = `(
-            SELECT TOP 1 i.ImageURL FROM ProductImages i WHERE i.ProductID = product.ProductID ORDER BY i.IsDefault DESC, i.ImageID
-        )`;
+        // PostgreSQL vs MSSQL compatible subquery
+        let defaultImageSubquery;
+        if (isPostgres()) {
+            defaultImageSubquery = `(
+                SELECT i."ImageURL" FROM "ProductImages" i WHERE i."ProductID" = "product"."ProductID" ORDER BY i."IsDefault" DESC, i."ImageID" LIMIT 1
+            )`;
+        } else {
+            defaultImageSubquery = `(
+                SELECT TOP 1 i.ImageURL FROM ProductImages i WHERE i.ProductID = product.ProductID ORDER BY i.IsDefault DESC, i.ImageID
+            )`;
+        }
 
         const { count, rows } = await db.Wishlist.findAndCountAll({
             where: { UserID: userId },

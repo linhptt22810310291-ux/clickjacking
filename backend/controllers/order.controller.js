@@ -6,6 +6,7 @@ const db = require('../models');
 const { Op, Sequelize } = require('sequelize');
 const OrderService = require('../services/order.service');
 const { createPaymentUrl } = require('../utils/vnpay.util');
+const { isPostgres } = require('../utils/dbHelper');
 
 // =======================================================
 // ===               CONTROLLERS CHO USER              ===
@@ -203,68 +204,97 @@ exports.getUserOrders = async (req, res) => {
       ];
     }
 
+    // Build dynamic SQL based on database type
+    let addressLiteral, itemsCountLiteral, firstItemImageLiteral, firstItemNameLiteral;
+    
+    if (isPostgres()) {
+      addressLiteral = `"shippingAddress"."Street" || ', ' || "shippingAddress"."City" || ', ' || COALESCE("shippingAddress"."State" || ', ', '') || "shippingAddress"."Country"`;
+      itemsCountLiteral = `(SELECT COUNT(*) FROM "OrderItems" AS oi WHERE oi."OrderID" = "Order"."OrderID")`;
+      firstItemImageLiteral = `(
+          SELECT
+              COALESCE(
+                  (SELECT pi."ImageURL"
+                   FROM "ProductImages" pi
+                   WHERE pi."VariantID" = pv."VariantID"
+                   ORDER BY pi."IsDefault" DESC, pi."ImageID" LIMIT 1),
+                  (SELECT pi2."ImageURL"
+                   FROM "ProductImages" pi2
+                   INNER JOIN "ProductVariants" pv2 ON pi2."VariantID" = pv2."VariantID"
+                   WHERE pv2."ProductID" = pv."ProductID"
+                     AND pv2."Color" = pv."Color"
+                   ORDER BY pi2."IsDefault" DESC, pi2."ImageID" LIMIT 1),
+                  (SELECT pi3."ImageURL"
+                   FROM "ProductImages" pi3
+                   WHERE pi3."ProductID" = pv."ProductID"
+                   ORDER BY pi3."IsDefault" DESC, pi3."ImageID" LIMIT 1)
+              )
+          FROM "OrderItems" oi
+          JOIN "ProductVariants" pv ON pv."VariantID" = oi."VariantID"
+          WHERE oi."OrderID" = "Order"."OrderID"
+          ORDER BY oi."OrderItemID" ASC
+          LIMIT 1
+      )`;
+      firstItemNameLiteral = `(
+          SELECT p."Name"
+          FROM "OrderItems" oi
+          JOIN "ProductVariants" pv ON pv."VariantID" = oi."VariantID"
+          JOIN "Products" p ON p."ProductID" = pv."ProductID"
+          WHERE oi."OrderID" = "Order"."OrderID"
+          ORDER BY oi."OrderItemID" ASC
+          LIMIT 1
+      )`;
+    } else {
+      addressLiteral = `shippingAddress.Street + ', ' + shippingAddress.City + ', ' + ISNULL(shippingAddress.State + ', ', '') + shippingAddress.Country`;
+      itemsCountLiteral = `(SELECT COUNT(*) FROM OrderItems AS oi WHERE oi.OrderID = "Order"."OrderID")`;
+      firstItemImageLiteral = `(
+          SELECT TOP 1
+              COALESCE(
+                  (SELECT TOP 1 pi.ImageURL
+                   FROM ProductImages pi
+                   WHERE pi.VariantID = pv.VariantID
+                   ORDER BY pi.IsDefault DESC, pi.ImageID),
+                  (SELECT TOP 1 pi2.ImageURL
+                   FROM ProductImages pi2
+                   INNER JOIN ProductVariants pv2 ON pi2.VariantID = pv2.VariantID
+                   WHERE pv2.ProductID = pv.ProductID
+                     AND pv2.Color = pv.Color
+                   ORDER BY pi2.IsDefault DESC, pi2.ImageID),
+                  (SELECT TOP 1 pi3.ImageURL
+                   FROM ProductImages pi3
+                   WHERE pi3.ProductID = pv.ProductID
+                   ORDER BY pi3.IsDefault DESC, pi3.ImageID)
+              )
+          FROM OrderItems oi
+          JOIN ProductVariants pv ON pv.VariantID = oi.VariantID
+          WHERE oi.OrderID = "Order"."OrderID"
+          ORDER BY oi.OrderItemID ASC
+      )`;
+      firstItemNameLiteral = `(
+          SELECT TOP 1 p.Name
+          FROM OrderItems oi
+          JOIN ProductVariants pv ON pv.VariantID = oi.VariantID
+          JOIN Products p ON p.ProductID = pv.ProductID
+          WHERE oi.OrderID = "Order"."OrderID"
+          ORDER BY oi.OrderItemID ASC
+      )`;
+    }
+
     const orders = await db.Order.findAll({
       where: whereClause,
       attributes: [
         'OrderID',
         'TotalAmount',
         'Status',
-        'PaymentStatus',  // để FE biết còn chờ thanh toán hay đã trả
+        'PaymentStatus',
         'OrderDate',
         'TrackingCode',
         'ShippingProvider',
         [Sequelize.col('shippingAddress.FullName'), 'RecipientName'],
         [Sequelize.col('shippingAddress.Phone'), 'ShippingPhone'],
-        [
-          Sequelize.literal(
-            `shippingAddress.Street + ', ' + shippingAddress.City + ', ' + ISNULL(shippingAddress.State + ', ', '') + shippingAddress.Country`
-          ),
-          'Address'
-        ],
-        [
-          Sequelize.literal(
-            `(SELECT COUNT(*) FROM OrderItems AS oi WHERE oi.OrderID = "Order"."OrderID")`
-          ),
-          'ItemsCount'
-        ],
-        // Ảnh sản phẩm đầu tiên
-        [
-          Sequelize.literal(`(
-              SELECT TOP 1
-                  COALESCE(
-                      (SELECT TOP 1 pi.ImageURL
-                       FROM ProductImages pi
-                       WHERE pi.VariantID = pv.VariantID
-                       ORDER BY pi.IsDefault DESC, pi.ImageID),
-                      (SELECT TOP 1 pi2.ImageURL
-                       FROM ProductImages pi2
-                       INNER JOIN ProductVariants pv2 ON pi2.VariantID = pv2.VariantID
-                       WHERE pv2.ProductID = pv.ProductID
-                         AND pv2.Color = pv.Color
-                       ORDER BY pi2.IsDefault DESC, pi2.ImageID),
-                      (SELECT TOP 1 pi3.ImageURL
-                       FROM ProductImages pi3
-                       WHERE pi3.ProductID = pv.ProductID
-                       ORDER BY pi3.IsDefault DESC, pi3.ImageID)
-                  )
-              FROM OrderItems oi
-              JOIN ProductVariants pv ON pv.VariantID = oi.VariantID
-              WHERE oi.OrderID = "Order"."OrderID"
-              ORDER BY oi.OrderItemID ASC
-          )`),
-          'FirstItemImage'
-        ],
-        [
-          Sequelize.literal(`(
-              SELECT TOP 1 p.Name
-              FROM OrderItems oi
-              JOIN ProductVariants pv ON pv.VariantID = oi.VariantID
-              JOIN Products p ON p.ProductID = pv.ProductID
-              WHERE oi.OrderID = "Order"."OrderID"
-              ORDER BY oi.OrderItemID ASC
-          )`),
-          'FirstItemName'
-        ]
+        [Sequelize.literal(addressLiteral), 'Address'],
+        [Sequelize.literal(itemsCountLiteral), 'ItemsCount'],
+        [Sequelize.literal(firstItemImageLiteral), 'FirstItemImage'],
+        [Sequelize.literal(firstItemNameLiteral), 'FirstItemName']
       ],
       include: [
         {
@@ -296,7 +326,29 @@ exports.getUserOrders = async (req, res) => {
  */
 exports.getUserOrderDetail = async (req, res) => {
   try {
-    const productImageSubquery = `
+    // Build dynamic subquery based on database type
+    let productImageSubquery;
+    if (isPostgres()) {
+      productImageSubquery = `
+            COALESCE(
+                (SELECT pi."ImageURL"
+                 FROM "ProductImages" pi
+                 WHERE pi."VariantID" = "items->variant"."VariantID"
+                 ORDER BY pi."IsDefault" DESC, pi."ImageID" LIMIT 1),
+                (SELECT pi2."ImageURL"
+                 FROM "ProductImages" pi2
+                 INNER JOIN "ProductVariants" pv2 ON pi2."VariantID" = pv2."VariantID"
+                 WHERE pi2."ProductID" = "items->variant"."ProductID"
+                   AND pv2."Color" = "items->variant"."Color"
+                 ORDER BY pi2."IsDefault" DESC, pi2."ImageID" LIMIT 1),
+                (SELECT pi3."ImageURL"
+                 FROM "ProductImages" pi3
+                 WHERE pi3."ProductID" = "items->variant"."ProductID"
+                 ORDER BY pi3."IsDefault" DESC, pi3."ImageID" LIMIT 1)
+            )
+        `;
+    } else {
+      productImageSubquery = `
             COALESCE(
                 (SELECT TOP 1 pi.ImageURL
                  FROM ProductImages pi
@@ -314,6 +366,7 @@ exports.getUserOrderDetail = async (req, res) => {
                  ORDER BY pi3.IsDefault DESC, pi3.ImageID)
             )
         `;
+    }
 
     const order = await db.Order.findOne({
       where: {

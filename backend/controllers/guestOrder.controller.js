@@ -4,7 +4,6 @@ const db = require('../models');
 const { Op, Sequelize } = require('sequelize');
 const OrderService = require('../services/order.service');
 const { createPaymentUrl } = require('../utils/vnpay.util');
-const { isPostgres } = require('../utils/dbHelper');
 // =======================================================
 // ===           CONTROLLERS CHO GUEST (PUBLIC)        ===
 // =======================================================
@@ -185,85 +184,6 @@ exports.retryGuestVnpayPayment = async (req, res) => {
     const { email, phone } = req.body;
 
     try {
-        // Tạo subquery tương thích với cả PostgreSQL và MSSQL
-        let firstItemNameSubquery, firstItemImageSubquery;
-        
-        if (isPostgres()) {
-            firstItemNameSubquery = `(
-                SELECT p."Name"
-                FROM "GuestOrderItems" goi
-                JOIN "ProductVariants" pv ON pv."VariantID" = goi."VariantID"
-                JOIN "Products" p ON p."ProductID" = pv."ProductID"
-                WHERE goi."GuestOrderID" = "GuestOrder"."GuestOrderID"
-                ORDER BY goi."GuestOrderItemID" ASC
-                LIMIT 1
-            )`;
-            
-            firstItemImageSubquery = `(
-                SELECT
-                    COALESCE(
-                        (SELECT pi."ImageURL"
-                         FROM "ProductImages" pi
-                         WHERE pi."VariantID" = pv."VariantID"
-                         ORDER BY pi."IsDefault" DESC, pi."ImageID" LIMIT 1),
-
-                        (SELECT pi2."ImageURL"
-                         FROM "ProductImages" pi2
-                         INNER JOIN "ProductVariants" pv2
-                             ON pi2."VariantID" = pv2."VariantID"
-                         WHERE pv2."ProductID" = pv."ProductID"
-                           AND pv2."Color" = pv."Color"
-                         ORDER BY pi2."IsDefault" DESC, pi2."ImageID" LIMIT 1),
-
-                        (SELECT pi3."ImageURL"
-                         FROM "ProductImages" pi3
-                         WHERE pi3."ProductID" = pv."ProductID"
-                         ORDER BY pi3."IsDefault" DESC, pi3."ImageID" LIMIT 1)
-                    )
-                FROM "GuestOrderItems" goi
-                JOIN "ProductVariants" pv ON pv."VariantID" = goi."VariantID"
-                WHERE goi."GuestOrderID" = "GuestOrder"."GuestOrderID"
-                ORDER BY goi."GuestOrderItemID" ASC
-                LIMIT 1
-            )`;
-        } else {
-            firstItemNameSubquery = `(
-                SELECT TOP 1 p.Name
-                FROM GuestOrderItems goi
-                JOIN ProductVariants pv ON pv.VariantID = goi.VariantID
-                JOIN Products p ON p.ProductID = pv.ProductID
-                WHERE goi.GuestOrderID = "GuestOrder"."GuestOrderID"
-                ORDER BY goi.GuestOrderItemID ASC
-            )`;
-            
-            firstItemImageSubquery = `(
-                SELECT TOP 1
-                    COALESCE(
-                        (SELECT TOP 1 pi.ImageURL
-                         FROM ProductImages pi
-                         WHERE pi.VariantID = pv.VariantID
-                         ORDER BY pi.IsDefault DESC, pi.ImageID),
-
-                        (SELECT TOP 1 pi2.ImageURL
-                         FROM ProductImages pi2
-                         INNER JOIN ProductVariants pv2
-                             ON pi2.VariantID = pv2.VariantID
-                         WHERE pv2.ProductID = pv.ProductID
-                           AND pv2.Color = pv.Color
-                         ORDER BY pi2.IsDefault DESC, pi2.ImageID),
-
-                        (SELECT TOP 1 pi3.ImageURL
-                         FROM ProductImages pi3
-                         WHERE pi3.ProductID = pv.ProductID
-                         ORDER BY pi3.IsDefault DESC, pi3.ImageID)
-                    )
-                FROM GuestOrderItems goi
-                JOIN ProductVariants pv ON pv.VariantID = goi.VariantID
-                WHERE goi.GuestOrderID = "GuestOrder"."GuestOrderID"
-                ORDER BY goi.GuestOrderItemID ASC
-            )`;
-        }
-
         const orders = await db.GuestOrder.findAll({
             where: {
                 Email: { [Op.like]: email },
@@ -275,8 +195,50 @@ exports.retryGuestVnpayPayment = async (req, res) => {
                 'Status',
                 'OrderDate',
                 'ShippingProvider',
-                [Sequelize.literal(firstItemNameSubquery), 'FirstItemName'],
-                [Sequelize.literal(firstItemImageSubquery), 'FirstItemImage']
+                [
+                    Sequelize.literal(`(
+                        SELECT TOP 1 p.Name
+                        FROM GuestOrderItems goi
+                        JOIN ProductVariants pv ON pv.VariantID = goi.VariantID
+                        JOIN Products p ON p.ProductID = pv.ProductID
+                        WHERE goi.GuestOrderID = "GuestOrder"."GuestOrderID"
+                        ORDER BY goi.GuestOrderItemID ASC
+                    )`),
+                    'FirstItemName'
+                ],
+                // ⭐ LẤY ẢNH THEO ĐÚNG VARIANT (SIZE/MÀU)
+                [
+                    Sequelize.literal(`(
+                        SELECT TOP 1
+                            COALESCE(
+                                -- 1. Ảnh gắn trực tiếp với VariantID
+                                (SELECT TOP 1 pi.ImageURL
+                                 FROM ProductImages pi
+                                 WHERE pi.VariantID = pv.VariantID
+                                 ORDER BY pi.IsDefault DESC, pi.ImageID),
+
+                                -- 2. Ảnh của biến thể cùng ProductID + Color
+                                (SELECT TOP 1 pi2.ImageURL
+                                 FROM ProductImages pi2
+                                 INNER JOIN ProductVariants pv2
+                                     ON pi2.VariantID = pv2.VariantID
+                                 WHERE pv2.ProductID = pv.ProductID
+                                   AND pv2.Color = pv.Color
+                                 ORDER BY pi2.IsDefault DESC, pi2.ImageID),
+
+                                -- 3. Ảnh mặc định theo ProductID
+                                (SELECT TOP 1 pi3.ImageURL
+                                 FROM ProductImages pi3
+                                 WHERE pi3.ProductID = pv.ProductID
+                                 ORDER BY pi3.IsDefault DESC, pi3.ImageID)
+                            )
+                        FROM GuestOrderItems goi
+                        JOIN ProductVariants pv ON pv.VariantID = goi.VariantID
+                        WHERE goi.GuestOrderID = "GuestOrder"."GuestOrderID"
+                        ORDER BY goi.GuestOrderItemID ASC
+                    )`),
+                    'FirstItemImage'
+                ]
             ],
             include: [
                 {
@@ -332,47 +294,25 @@ exports.retryGuestVnpayPayment = async (req, res) => {
  */
 exports.getOrderDetail = async (req, res) => {
   try {
-    // Lấy ảnh ưu tiên theo Variant -> Color -> Product - hỗ trợ cả PostgreSQL và MSSQL
-    let productImageSubquery;
-    if (isPostgres()) {
-      productImageSubquery = `
-        COALESCE(
-          (SELECT pi."ImageURL"
-           FROM "ProductImages" pi
-           WHERE pi."VariantID" = "items->variant"."VariantID"
-           ORDER BY pi."IsDefault" DESC, pi."ImageID" LIMIT 1),
-          (SELECT pi2."ImageURL"
-           FROM "ProductImages" pi2
-           INNER JOIN "ProductVariants" pv2 ON pi2."VariantID" = pv2."VariantID"
-           WHERE pi2."ProductID" = "items->variant"."ProductID"
-             AND pv2."Color" = "items->variant"."Color"
-           ORDER BY pi2."IsDefault" DESC, pi2."ImageID" LIMIT 1),
-          (SELECT pi3."ImageURL"
-           FROM "ProductImages" pi3
-           WHERE pi3."ProductID" = "items->variant"."ProductID"
-           ORDER BY pi3."IsDefault" DESC, pi3."ImageID" LIMIT 1)
-        )
-      `;
-    } else {
-      productImageSubquery = `
-        COALESCE(
-          (SELECT TOP 1 pi.ImageURL
-           FROM ProductImages pi
-           WHERE pi.VariantID = [items->variant].VariantID
-           ORDER BY pi.IsDefault DESC, pi.ImageID),
-          (SELECT TOP 1 pi2.ImageURL
-           FROM ProductImages pi2
-           INNER JOIN ProductVariants pv2 ON pi2.VariantID = pv2.VariantID
-           WHERE pi2.ProductID = [items->variant].ProductID
-             AND pv2.Color = [items->variant].Color
-           ORDER BY pi2.IsDefault DESC, pi2.ImageID),
-          (SELECT TOP 1 pi3.ImageURL
-           FROM ProductImages pi3
-           WHERE pi3.ProductID = [items->variant].ProductID
-           ORDER BY pi3.IsDefault DESC, pi3.ImageID)
-        )
-      `;
-    }
+    // Lấy ảnh ưu tiên theo Variant -> Color -> Product
+    const productImageSubquery = `
+      COALESCE(
+        (SELECT TOP 1 pi.ImageURL
+         FROM ProductImages pi
+         WHERE pi.VariantID = [items->variant].VariantID
+         ORDER BY pi.IsDefault DESC, pi.ImageID),
+        (SELECT TOP 1 pi2.ImageURL
+         FROM ProductImages pi2
+         INNER JOIN ProductVariants pv2 ON pi2.VariantID = pv2.VariantID
+         WHERE pi2.ProductID = [items->variant].ProductID
+           AND pv2.Color = [items->variant].Color
+         ORDER BY pi2.IsDefault DESC, pi2.ImageID),
+        (SELECT TOP 1 pi3.ImageURL
+         FROM ProductImages pi3
+         WHERE pi3.ProductID = [items->variant].ProductID
+         ORDER BY pi3.IsDefault DESC, pi3.ImageID)
+      )
+    `;
 
     const order = await db.GuestOrder.findByPk(req.params.id, {
       include: [
