@@ -3,6 +3,31 @@ const db = require('../models');
 const fs = require('fs');
 const path = require('path');
 const { vietnameseNormalize } = require('../utils/stringUtils');
+const cloudinaryConfig = require('../config/cloudinary.config');
+
+// Helper function to upload product image
+const uploadProductImage = async (file) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (isProduction) {
+        // Upload to Cloudinary in production
+        try {
+            const result = await cloudinaryConfig.uploadImage(file.path, 'products');
+            if (result.success) {
+                // Delete local file after successful upload
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
+                return result.url;
+            }
+        } catch (error) {
+            console.error('Cloudinary product upload error:', error);
+        }
+    }
+    
+    // Fallback to local storage
+    return `/uploads/${file.filename}`;
+};
 
 /**
  * Service để tạo sản phẩm, biến thể và hình ảnh trong một transaction.
@@ -56,8 +81,9 @@ exports.createProductWithDetails = async (productData, variantsData, files) => {
             const imagesPayload = [];
             let isDefaultSet = false;
 
-            files.forEach(file => {
-                const imageUrl = `/uploads/${file.filename}`; // Đường dẫn tương đối
+            for (const file of files) {
+                // Upload to Cloudinary in production, local in development
+                const imageUrl = await uploadProductImage(file);
                 let variantId = null;
                 let isDefault = false;
 
@@ -79,7 +105,7 @@ exports.createProductWithDetails = async (productData, variantsData, files) => {
                     ImageURL: imageUrl,
                     IsDefault: isDefault
                 });
-            });
+            }
             await db.ProductImage.bulkCreate(imagesPayload, { transaction: t });
         }
         return product;

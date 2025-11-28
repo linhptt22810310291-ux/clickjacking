@@ -5,6 +5,32 @@ const ProductService = require('../services/product.service');
 const fs = require('fs');
 const path = require('path');
 const { isPostgres, getDefaultImageSubquery } = require('../utils/dbHelper');
+const cloudinaryConfig = require('../config/cloudinary.config');
+
+// Helper function to upload product image (for update)
+const uploadProductImage = async (file) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (isProduction) {
+        // Upload to Cloudinary in production
+        try {
+            const result = await cloudinaryConfig.uploadImage(file.path, 'products');
+            if (result.success) {
+                // Delete local file after successful upload
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
+                return result.url;
+            }
+        } catch (error) {
+            console.error('Cloudinary product upload error:', error);
+        }
+    }
+    
+    // Fallback to local storage
+    return `/uploads/${file.filename}`;
+};
+
 // --- Helper Functions (dùng cho User-facing API) ---
 
 /** Ánh xạ query 'category' sang điều kiện 'LIKE' cho Sequelize */
@@ -563,10 +589,11 @@ exports.updateProduct = async (req, res) => {
             keptImagePaths.push(imagePath);
         }
 
-        // 5c. Ảnh mới (từ req.files)
+        // 5c. Ảnh mới (từ req.files) - Upload to Cloudinary in production
         if (req.files && req.files.length > 0) {
             for (const file of req.files) {
-                const imageUrl = `/uploads/${file.filename}`;
+                // Upload to Cloudinary in production, local in development
+                const imageUrl = await uploadProductImage(file);
                 keptImagePaths.push(imageUrl); // File mới nên cũng giữ lại
 
                 if (file.fieldname.startsWith('colorImage_')) {

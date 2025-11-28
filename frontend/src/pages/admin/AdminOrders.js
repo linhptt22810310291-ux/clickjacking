@@ -29,7 +29,12 @@ import autoTable from 'jspdf-autotable';
 // SỬA: Chỉ import 1 lần
 import { robotoBase64 } from '../../fonts/robotoBase64';
 // --- Helper Functions ---
-const fmtVND = (n) => typeof n === 'number' ? n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) : '0 ₫';
+// SỬA: Xử lý cả string và number từ PostgreSQL DECIMAL
+const fmtVND = (n) => {
+    const num = parseFloat(n);
+    if (isNaN(num)) return '0 ₫';
+    return num.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+};
 
 export default function AdminOrders() {
     const dispatch = useDispatch();

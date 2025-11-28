@@ -3,7 +3,17 @@ import { Container, Row, Col, Card, Table, Badge, Alert } from 'react-bootstrap'
 import axios from 'axios';
 import '../../styles/components/SecurityMonitor.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+// Determine API URL based on environment
+const getApiBaseUrl = () => {
+    // Check if running on Render (production)
+    if (window.location.hostname.includes('onrender.com')) {
+        return 'https://clickjacking-backend.onrender.com';
+    }
+    // Use environment variable or fallback to localhost
+    return process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const SecurityMonitor = () => {
   const [stats, setStats] = useState({

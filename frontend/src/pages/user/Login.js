@@ -124,6 +124,7 @@ useEffect(() => {
       .auth-left::after { content: ""; position: absolute; right: 0; top: 0; height: 100%; width: 1px; background: #eee; }
       .brand-box { text-align:center; }
       .brand-logo { width: 120px; height: 120px; display:block; margin: 0 auto 12px; object-fit: contain; }
+      .brand-logo-text { font-size: 64px; font-weight: 700; color: #c71857; margin-bottom: 12px; }
       .brand-name { font-weight: 600; letter-spacing: 3px; }
       .auth-right { padding: 48px 42px; }
       .auth-title { color: #c71857; font-weight: 700; font-size: 22px; text-align:center; margin-bottom: 8px; }
@@ -162,14 +163,7 @@ useEffect(() => {
           {/* Cột trái: Brand */}
           <div className="auth-left">
             <div className="brand-box">
-              <img
-                className="brand-logo"
-                src="/logo-shoe.png"
-                alt="Lily & Lage SHOES"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
+              <div className="brand-logo-text">L&L</div>
               <div className="brand-name">L I L Y &nbsp; &amp; &nbsp; L A G E</div>
               <div style={{ letterSpacing: 6, color: '#999', marginTop: 6 }}>S H O E S</div>
             </div>

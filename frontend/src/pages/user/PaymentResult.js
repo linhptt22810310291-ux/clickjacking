@@ -3,7 +3,17 @@ import axios from 'axios';
 import { Spinner, Button, Alert, Container } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+// Determine API URL based on environment
+const getApiBaseUrl = () => {
+    // Check if running on Render (production)
+    if (window.location.hostname.includes('onrender.com')) {
+        return 'https://clickjacking-backend.onrender.com';
+    }
+    // Use environment variable or fallback to localhost
+    return process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export default function PaymentResult() {
     const [loading, setLoading] = useState(true);
