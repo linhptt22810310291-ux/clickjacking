@@ -15,9 +15,11 @@ let suspiciousIPs = new Map(); // IP -> { count, firstSeen, lastSeen }
 
 // 🆕 Stats để sync với Security Dashboard
 const firewallStats = {
-  totalBlocked: 0,
+  totalBlocked: 0,           // Tổng số lần block (unique request bị block lần đầu)
+  totalBlockedRequests: 0,   // Tổng số request bị chặn (bao gồm repeat)
   blockedIPs: new Set(),
-  recentLogs: []
+  recentLogs: [],
+  knownBlockedRequests: new Map() // Track để không đếm lặp IP+path nhiều lần
 };
 
 // Load blocked IPs from file
@@ -153,22 +155,29 @@ const firewallMiddleware = (req, res, next) => {
     console.warn(`🚫 Blocked IP attempted access: ${ip}`);
     
     // 🆕 Track vào firewallStats để sync với dashboard
-    firewallStats.totalBlocked++;
+    // Chỉ tính là attack mới nếu IP này chưa bị block trước đó trong session này
+    const isNewBlockedIP = !firewallStats.blockedIPs.has(ip);
+    
+    firewallStats.totalBlockedRequests++; // Đếm tất cả request bị chặn
     firewallStats.blockedIPs.add(ip);
-    firewallStats.recentLogs.push({
-      timestamp: new Date().toISOString(),
-      ip: ip,
-      path: req.path || req.url,
-      type: 'IP_BLOCKED',
-      reason: 'IP in blacklist'
-    });
+    
+    if (isNewBlockedIP) {
+      firewallStats.totalBlocked++; // Chỉ tính attack mới khi IP chưa có trong danh sách
+      firewallStats.recentLogs.push({
+        timestamp: new Date().toISOString(),
+        ip: ip,
+        path: req.path || req.url,
+        type: 'IP_BLOCKED',
+        reason: 'IP in blacklist (first block in session)'
+      });
+    }
     
     // Giữ tối đa 100 logs
     if (firewallStats.recentLogs.length > 100) {
       firewallStats.recentLogs = firewallStats.recentLogs.slice(-100);
     }
     
-    console.log(`📊 Firewall stats: ${firewallStats.totalBlocked} blocked, ${firewallStats.blockedIPs.size} IPs`);
+    console.log(`📊 Firewall stats: ${firewallStats.totalBlocked} unique attacks, ${firewallStats.totalBlockedRequests} total blocked requests, ${firewallStats.blockedIPs.size} IPs`);
     
     return res.status(403).json({
       success: false,
@@ -350,10 +359,21 @@ const removeBlockedIP = (req, res) => {
 // 🆕 Export function để lấy firewall stats cho dashboard
 const getFirewallStats = () => ({
   totalBlocked: firewallStats.totalBlocked,
+  totalBlockedRequests: firewallStats.totalBlockedRequests,
   blockedIPs: Array.from(firewallStats.blockedIPs),
   blockedCount: firewallStats.blockedIPs.size,
   recentLogs: firewallStats.recentLogs
 });
+
+// 🆕 Reset firewall stats (dùng khi unblock hoặc reset demo)
+const resetFirewallStats = () => {
+  firewallStats.totalBlocked = 0;
+  firewallStats.totalBlockedRequests = 0;
+  firewallStats.blockedIPs.clear();
+  firewallStats.recentLogs = [];
+  firewallStats.knownBlockedRequests.clear();
+  console.log('🔄 Firewall stats reset');
+};
 
 module.exports = {
   firewallMiddleware,
@@ -366,4 +386,5 @@ module.exports = {
   addBlockedIP,
   removeBlockedIP,
   getFirewallStats, // 🆕 Export stats
+  resetFirewallStats, // 🆕 Reset stats
 };

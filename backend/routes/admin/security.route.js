@@ -13,7 +13,7 @@ const logger = require('../../utils/logger');
 const { getRateLimitStats, resetStats: resetRateLimitStats } = require('../../middleware/security.middleware');
 
 // 🆕 Import từ firewall.middleware để lấy firewall stats
-const { getFirewallStats, unblockIP, getBlockedIPs } = require('../../middleware/firewall.middleware');
+const { getFirewallStats, unblockIP, getBlockedIPs, resetFirewallStats } = require('../../middleware/firewall.middleware');
 
 // Middleware: Kiểm tra admin (giả định bạn đã có middleware này)
 const checkAdmin = require('../../middleware/checkAdmin');
@@ -51,6 +51,11 @@ router.post('/emergency-unblock', async (req, res) => {
         resetRateLimitStats();
       }
       
+      // 🆕 Reset firewall stats
+      if (typeof resetFirewallStats === 'function') {
+        resetFirewallStats();
+      }
+      
       logger.securityEvent('Emergency UNBLOCK ALL IPs', {
         unblockedCount: blockedList.length,
         timestamp: new Date().toISOString()
@@ -58,7 +63,7 @@ router.post('/emergency-unblock', async (req, res) => {
       
       return res.json({
         success: true,
-        message: `Unblocked all ${blockedList.length} IPs`,
+        message: `Unblocked all ${blockedList.length} IPs and reset stats`,
         unblockedIPs: blockedList
       });
     }
@@ -72,6 +77,11 @@ router.post('/emergency-unblock', async (req, res) => {
     // Reset rate limit stats
     if (typeof resetRateLimitStats === 'function') {
       resetRateLimitStats();
+    }
+    
+    // 🆕 Reset firewall stats
+    if (typeof resetFirewallStats === 'function') {
+      resetFirewallStats();
     }
     
     logger.securityEvent('Emergency IP unblock', {
