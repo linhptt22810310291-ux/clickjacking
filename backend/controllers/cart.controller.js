@@ -1,10 +1,37 @@
 'use strict';
 const db = require('../models');
 const { Sequelize, Op } = require('sequelize');
+const { isPostgres } = require('../utils/dbHelper');
 
 // --- Helper mới để lấy chi tiết giỏ hàng (tái sử dụng) ---
 const getCartDetails = async (cartId) => {
-    const productImageSubquery = `COALESCE(
+    let productImageSubquery;
+    
+    if (isPostgres()) {
+        // PostgreSQL syntax
+        productImageSubquery = `COALESCE(
+    (SELECT pi."ImageURL"
+     FROM "ProductImages" pi
+     WHERE pi."VariantID" = "variant"."VariantID"
+     ORDER BY pi."IsDefault" DESC, pi."ImageID" LIMIT 1),
+
+    (SELECT pi2."ImageURL"
+     FROM "ProductImages" pi2
+     INNER JOIN "ProductVariants" pv2 ON pi2."VariantID" = pv2."VariantID"
+     WHERE pi2."ProductID" = "variant"."ProductID"
+       AND pv2."Color" = "variant"."Color"
+     ORDER BY pi2."IsDefault" DESC, pi2."ImageID" LIMIT 1),
+
+    (SELECT pi3."ImageURL"
+     FROM "ProductImages" pi3
+     WHERE pi3."ProductID" = "variant"."ProductID"
+     ORDER BY pi3."IsDefault" DESC, pi3."ImageID" LIMIT 1),
+
+    '/placeholder.jpg'
+)`;
+    } else {
+        // MSSQL syntax
+        productImageSubquery = `COALESCE(
     (SELECT TOP 1 pi.ImageURL
      FROM ProductImages pi
      WHERE pi.VariantID = variant.VariantID
@@ -24,6 +51,7 @@ const getCartDetails = async (cartId) => {
 
     '/placeholder.jpg'
 )`;
+    }
 
 
     const items = await db.CartItem.findAll({
