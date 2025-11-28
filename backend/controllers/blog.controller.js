@@ -3,6 +3,34 @@ const db = require('../models');
 const { Sequelize, Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
+const cloudinaryConfig = require('../config/cloudinary.config');
+
+// Helper function to upload blog image
+const uploadBlogImage = async (file) => {
+    if (!file) return null;
+    
+    // In production, upload to Cloudinary
+    if (process.env.NODE_ENV === 'production') {
+        try {
+            const result = await cloudinaryConfig.uploadImage(file.path, 'blogs');
+            // Delete local temp file after upload
+            if (fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+            if (result.success) {
+                return result.url;
+            }
+            console.error('Cloudinary blog upload failed:', result.error);
+            return null;
+        } catch (error) {
+            console.error('Blog image upload error:', error);
+            return null;
+        }
+    }
+    
+    // In development, use local storage
+    return `/uploads/blogs/${file.filename}`;
+};
 
 // =======================================================
 // ===               CONTROLLERS CHO USER              ===
@@ -178,7 +206,7 @@ exports.getBlogByIdAdmin = async (req, res) => {
 exports.createBlog = async (req, res) => {
     try {
         const { Title, Content, Author, IsActive } = req.body;
-        const ImageURL = req.file ? `/uploads/blogs/${req.file.filename}` : null;
+        const ImageURL = await uploadBlogImage(req.file);
 
         const newBlog = await db.Blog.create({
             Title, Content, Author, ImageURL,
@@ -206,12 +234,16 @@ exports.updateBlog = async (req, res) => {
         let newImageURL = blog.ImageURL; // Giữ lại ảnh cũ
 
         if (req.file) {
-            newImageURL = `/uploads/blogs/${req.file.filename}`;
-            // Xóa ảnh cũ nếu có
-            if (blog.ImageURL) {
-                const oldImagePath = path.join(__dirname, '../../', blog.ImageURL);
-                if (fs.existsSync(oldImagePath)) {
-                    fs.unlink(oldImagePath, err => { if (err) console.error("Lỗi xóa ảnh cũ:", err) });
+            // Upload new image
+            const uploadedUrl = await uploadBlogImage(req.file);
+            if (uploadedUrl) {
+                newImageURL = uploadedUrl;
+                // Delete old local image if it exists and is not a Cloudinary URL
+                if (blog.ImageURL && !blog.ImageURL.startsWith('http')) {
+                    const oldImagePath = path.join(__dirname, '../../', blog.ImageURL);
+                    if (fs.existsSync(oldImagePath)) {
+                        fs.unlink(oldImagePath, err => { if (err) console.error("Lỗi xóa ảnh cũ:", err) });
+                    }
                 }
             }
         }

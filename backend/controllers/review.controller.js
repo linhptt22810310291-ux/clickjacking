@@ -3,8 +3,38 @@ const db = require('../models');
 const { Op, Sequelize } = require('sequelize');
 const { endOfDay } = require('date-fns');
 const dotenv = require("dotenv");
+const fs = require('fs');
+const cloudinaryConfig = require('../config/cloudinary.config');
 dotenv.config();
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
+
+// Helper function to upload review media
+const uploadReviewMedia = async (file) => {
+    if (!file) return null;
+    
+    // In production, upload to Cloudinary
+    if (process.env.NODE_ENV === 'production') {
+        try {
+            const folder = file.mimetype.startsWith('video/') ? 'reviews/videos' : 'reviews';
+            const result = await cloudinaryConfig.uploadImage(file.path, folder);
+            // Delete local temp file after upload
+            if (fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
+            if (result.success) {
+                return result.url;
+            }
+            console.error('Cloudinary review upload failed:', result.error);
+            return null;
+        } catch (error) {
+            console.error('Review media upload error:', error);
+            return null;
+        }
+    }
+    
+    // In development, use local storage
+    return `/uploads/${file.filename}`;
+};
 
 // =======================================================
 // ===           CONTROLLERS CHO USER (PUBLIC)         ===
@@ -47,7 +77,7 @@ exports.getProductReviews = async (req, res) => {
             if (plainReview.media) {
                 plainReview.media = plainReview.media.map(m => ({
                     ...m,
-                    MediaURL: `${BASE_URL}${m.MediaURL}`
+                    MediaURL: m.MediaURL.startsWith('http') ? m.MediaURL : `${BASE_URL}${m.MediaURL}`
                 }));
             }
             return plainReview;
@@ -144,12 +174,22 @@ exports.createReview = async (req, res) => {
 
     // 4) Lưu media (field name 'files')
     if (req.files?.length) {
-      const mediaData = req.files.map(f => ({
-        ReviewID: newReview.ReviewID,
-        MediaURL: `/uploads/${f.filename}`,
-        IsVideo: f.mimetype.startsWith('video/')
-      }));
-      await db.ReviewMedia.bulkCreate(mediaData, { transaction: t });
+      const mediaPromises = req.files.map(async (f) => {
+        const mediaUrl = await uploadReviewMedia(f);
+        if (mediaUrl) {
+          return {
+            ReviewID: newReview.ReviewID,
+            MediaURL: mediaUrl,
+            IsVideo: f.mimetype.startsWith('video/')
+          };
+        }
+        return null;
+      });
+      const mediaDataArray = await Promise.all(mediaPromises);
+      const validMediaData = mediaDataArray.filter(m => m !== null);
+      if (validMediaData.length > 0) {
+        await db.ReviewMedia.bulkCreate(validMediaData, { transaction: t });
+      }
     }
 
     await t.commit();

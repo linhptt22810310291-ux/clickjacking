@@ -9,6 +9,15 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Debug log (only in production to verify config)
+if (process.env.NODE_ENV === 'production') {
+  console.log('🔧 Cloudinary Config:', {
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY ? `${process.env.CLOUDINARY_API_KEY.substring(0, 4)}...` : 'NOT SET',
+    api_secret: process.env.CLOUDINARY_API_SECRET ? `${process.env.CLOUDINARY_API_SECRET.substring(0, 4)}...` : 'NOT SET',
+  });
+}
+
 /**
  * Upload image to Cloudinary
  * @param {string} filePath - Local file path or URL

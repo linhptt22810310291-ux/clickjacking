@@ -22,11 +22,12 @@ import VariantPickerModal from "../../components/VariantPickerModal";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 const PLACEHOLDER_IMG = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
 const PLACEHOLDER_BLOG = `https://placehold.co/800x400/e2e8f0/64748b?text=Blog`;
-const API = API_BASE_URL;
 
-// Nếu sau này có logic riêng cho ảnh local thì xử lý thêm ở đây
-const getLocalBlogImagePath = (blog) => {
-  return null;
+// Helper để xử lý URL ảnh blog (local hoặc Cloudinary)
+const resolveBlogImageUrl = (imagePath) => {
+  if (!imagePath) return PLACEHOLDER_BLOG;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) return imagePath;
+  return `${API_BASE_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
 };
 
 export default function Home() {
@@ -525,12 +526,7 @@ export default function Home() {
 
           <Row className="g-4 mt-2">
             {blogs.map((blog) => {
-              const localPath = getLocalBlogImagePath(blog);
-              const fallbackNetwork = blog?.ImageURL?.startsWith("/")
-                ? `${API}${blog.ImageURL}`
-                : blog?.ImageURL || PLACEHOLDER_BLOG;
-
-              const imgSrc = localPath || fallbackNetwork;
+              const imgSrc = resolveBlogImageUrl(blog.ImageURL);
 
               return (
                 <Col key={blog.BlogID || blog.Title} md={4}>
