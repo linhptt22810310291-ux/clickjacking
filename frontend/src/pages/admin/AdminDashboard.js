@@ -76,18 +76,26 @@ const TopProductsTable = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {data.map(p => (
+                            {data.map(p => {
+                                // Helper to resolve image URL
+                                const resolveImg = (url) => {
+                                    if (!url) return 'https://placehold.co/40x40/e2e8f0/64748b?text=No';
+                                    if (url.startsWith('http')) return url;
+                                    return `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${url}`;
+                                };
+                                return (
                                 <tr key={p.VariantID} onClick={() => handleNav(p.ProductID)} style={{cursor: 'pointer'}}>
                                     <td>
                                         <div className="d-flex align-items-center">
-                                            <img src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${p.DefaultImage}`} alt={p.Name} className="me-2" style={{width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px'}} />
+                                            <img src={resolveImg(p.DefaultImage)} alt={p.Name} className="me-2" style={{width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px'}} />
                                             <span className="fw-bold">{p.Name}</span>
                                         </div>
                                     </td>
                                     <td><strong>{p.Size}</strong> - {p.Color}</td>
                                     <td className="text-end fw-bold">{fmtNum(p.sold)}</td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </Table>
                 )}

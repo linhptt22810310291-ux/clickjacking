@@ -4,6 +4,9 @@ import { jwtDecode } from "jwt-decode";
 // SỬA Ở ĐÂY: Dùng namespace import để tạo đối tượng 'api'
 import * as api from '../api';
 
+// API Base URL for production
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+
 // --- Async Thunks ---
 
 // Thunk cho việc đăng nhập
@@ -140,7 +143,7 @@ const userSlice = createSlice({
                         role: decoded.role, 
                         username: decoded.username, 
                         email: decoded.email, 
-                        avatar: decoded.avatar ? (decoded.avatar.startsWith("http") ? decoded.avatar : `http://localhost:5000${decoded.avatar}`) : null 
+                        avatar: decoded.avatar ? (decoded.avatar.startsWith("http") ? decoded.avatar : `${API_BASE_URL}${decoded.avatar}`) : null 
                     };
                     
                     // SỬA LỖI: Báo cho app biết đã tải xong
@@ -198,7 +201,7 @@ const userSlice = createSlice({
           const profileData = action.payload;
           //  Xử lý URL avatar trước khi cập nhật state
           if (profileData.avatar && !profileData.avatar.startsWith('http')) {
-              profileData.avatar = `http://localhost:5000${profileData.avatar}`;
+              profileData.avatar = `${API_BASE_URL}${profileData.avatar}`;
           }
           state.user = { ...state.user, ...profileData };
       })

@@ -301,14 +301,14 @@ useEffect(() => {
                 <Button
                   className="btn-social btn-facebook d-flex align-items-center justify-content-center gap-2"
                   as="a"
-                  href="http://localhost:5000/auth/facebook"
+                  href={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}/auth/facebook`}
                 >
                   <BsFacebook /> Connect with Facebook
                 </Button>
                 <Button
                   className="btn-social btn-google d-flex align-items-center justify-content-center gap-2"
                   as="a"
-                  href="http://localhost:5000/auth/google"
+                  href={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}/auth/google`}
                 >
                   <BsGoogle /> Connect with Google
                 </Button>

@@ -31,6 +31,13 @@ import "../../styles/pages/AdminProducts.css";
 // Định nghĩa baseURL cho ảnh
 const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+// Helper to resolve image URL (handles Cloudinary)
+const resolveImageUrl = (url) => {
+    if (!url) return 'https://placehold.co/100x100/e2e8f0/64748b?text=No+Image';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `${baseURL}${url}`;
+};
+
 // Hàm chuẩn hóa tên file (copy từ file 1)
 const vietnameseNormalize = (text) => {
   if (!text) return '';
@@ -768,7 +775,7 @@ const addVariant = () => {
                     {colorImages[color] && (
                         <div className="d-flex align-items-center">
                         <img
-                            src={colorImages[color] instanceof File ? URL.createObjectURL(colorImages[color]) : `${baseURL}${colorImages[color]}`}
+                            src={colorImages[color] instanceof File ? URL.createObjectURL(colorImages[color]) : resolveImageUrl(colorImages[color])}
                             alt={`Preview ${color}`}
                             width="50"
                         />
@@ -795,7 +802,7 @@ const addVariant = () => {
               {images.map((img, index) => (
                 <ListGroup.Item key={index} className="d-flex gap-2 align-items-center">
                   <img
-                    src={typeof img === 'string' ? `${baseURL}${img}` : URL.createObjectURL(img)}
+                    src={typeof img === 'string' ? resolveImageUrl(img) : URL.createObjectURL(img)}
                     alt="Preview"
                     width="50"
                   />
@@ -858,7 +865,7 @@ const addVariant = () => {
                 {Object.entries(detailColorImagesData || {}).map(([color, url]) => (
                   <Col md={3} key={color} className="mb-2 text-center">
                     <strong>{color}</strong><br />
-                    <img src={`${baseURL}${url}`} alt={color} width="100%" className="img-thumbnail" />
+                    <img src={resolveImageUrl(url)} alt={color} width="100%" className="img-thumbnail" />
                   </Col>
                 ))}
               </Row>
@@ -867,7 +874,7 @@ const addVariant = () => {
               <Row>
                 {detailImagesData?.map((img) => (
                   <Col md={3} key={img.ImageID} className="mb-2">
-                    <img src={`${baseURL}${img.ImageURL}`} alt="Product" width="100%" className="img-thumbnail" />
+                    <img src={resolveImageUrl(img.ImageURL)} alt="Product" width="100%" className="img-thumbnail" />
                     {img.IsDefault && <span className="badge bg-info">Mặc định</span>}
                   </Col>
                 ))}
