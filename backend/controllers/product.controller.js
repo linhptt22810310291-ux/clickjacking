@@ -4,6 +4,7 @@ const { Op, Sequelize } = require('sequelize');
 const ProductService = require('../services/product.service');
 const fs = require('fs');
 const path = require('path');
+const { getDefaultImageSubquery } = require('../utils/dbHelper');
 // --- Helper Functions (dùng cho User-facing API) ---
 
 /** Ánh xạ query 'category' sang điều kiện 'LIKE' cho Sequelize */
@@ -84,13 +85,7 @@ exports.getAllProducts = async (req, res) => {
         }
 
         const order = mapSortToOrder(sort);        
-        const defaultImageSubquery = `(
-            COALESCE(
-                (SELECT TOP 1 i.ImageURL FROM ProductImages i WHERE i.ProductID = [Product].[ProductID] AND i.IsDefault = 1 AND i.VariantID IS NOT NULL ORDER BY i.ImageID),
-                (SELECT TOP 1 i2.ImageURL FROM ProductImages i2 WHERE i2.ProductID = [Product].[ProductID] AND i2.IsDefault = 1 AND (i2.VariantID IS NULL OR i2.VariantID = 0) ORDER BY i2.ImageID),
-                (SELECT TOP 1 i3.ImageURL FROM ProductImages i3 WHERE i3.ProductID = [Product].[ProductID] ORDER BY i3.IsDefault DESC, i3.ImageID)
-            )
-        )`;
+        const defaultImageSubquery = getDefaultImageSubquery('Product');
 
         const { count, rows } = await db.Product.findAndCountAll({
             attributes: {
