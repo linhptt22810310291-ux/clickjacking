@@ -7,7 +7,7 @@ import "slick-carousel/slick/slick-theme.css";
 import "../../../styles/components/ProductSlider.css";
 
 const API = 'http://localhost:5000';
-const PLACEHOLDER = '/placeholder.jpg';
+const PLACEHOLDER = 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image';
 
 const fmtVND = (n) =>
   n.toLocaleString('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });

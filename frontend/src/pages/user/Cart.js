@@ -21,7 +21,7 @@ import { getProductVariantsAPI } from '../../api';
 import VariantPickerModal from "../../components/VariantPickerModal"; // Tách Modal
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
-const PLACEHOLDER_IMG = `/placeholder.jpg`;
+const PLACEHOLDER_IMG = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
 
 function Cart() {
     const dispatch = useDispatch();

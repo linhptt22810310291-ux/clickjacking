@@ -20,7 +20,7 @@ function ReviewFormModal({ show, onHide, item, onReviewSubmitted }) {
 
   // ---- Chuẩn hóa ảnh + chọn đúng ảnh theo biến thể
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
-  const PLACEHOLDER = '/placeholder.jpg';
+  const PLACEHOLDER = 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image';
   const norm = (u) => (!u ? '' : (u.startsWith('http') ? u : `${API_BASE_URL}${u}`));
 
   // Ưu tiên ảnh của biến thể; sau đó đến ảnh mặc định của item/product

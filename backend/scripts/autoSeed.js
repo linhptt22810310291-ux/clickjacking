@@ -126,15 +126,13 @@ const autoSeed = async () => {
     const allVariants = await db.ProductVariant.findAll({ include: ['product'] });
     const images = [];
     
-    // Use placeholder images from a free service
-    const placeholderBase = 'https://via.placeholder.com/400x400.png?text=';
-    
+    // Use placehold.co for reliable placeholder images
     allVariants.forEach((variant, idx) => {
-      const productName = encodeURIComponent(variant.product?.Name?.substring(0, 15) || 'Shoe');
+      const colorText = variant.Color === 'Đen' ? 'Black' : 'White';
       images.push({
         ProductID: variant.ProductID,
         VariantID: variant.VariantID,
-        ImageURL: `${placeholderBase}${productName}+${variant.Color}`,
+        ImageURL: `https://placehold.co/400x400/e2e8f0/64748b?text=Shoe+${colorText}`,
         IsDefault: variant.Color === 'Đen'
       });
     });
@@ -165,21 +163,21 @@ const autoSeed = async () => {
         Title: 'Hướng dẫn chọn giày phù hợp',
         Content: 'Việc chọn giày phù hợp rất quan trọng để bảo vệ đôi chân của bạn. Đầu tiên, hãy đo kích thước chân chính xác. Thử giày vào buổi chiều khi chân đã giãn nở. Đảm bảo có khoảng trống 1cm ở mũi giày...',
         Author: 'Admin',
-        ImageURL: 'https://via.placeholder.com/800x400.png?text=Blog+1',
+        ImageURL: 'https://placehold.co/800x400/e2e8f0/64748b?text=Blog+1',
         IsActive: true
       },
       {
         Title: 'Xu hướng giày 2025',
         Content: 'Năm 2025 chứng kiến sự trở lại của phong cách retro với sneaker chunky và giày cao gót block heel. Màu sắc pastel và earth tone vẫn được ưa chuộng...',
         Author: 'Admin',
-        ImageURL: 'https://via.placeholder.com/800x400.png?text=Blog+2',
+        ImageURL: 'https://placehold.co/800x400/e2e8f0/64748b?text=Blog+2',
         IsActive: true
       },
       {
         Title: 'Cách bảo quản giày da',
         Content: 'Giày da cần được bảo quản đúng cách để giữ được độ bền. Hãy lau sạch sau mỗi lần sử dụng, dùng xi đánh giày định kỳ, và bảo quản nơi khô ráo thoáng mát...',
         Author: 'Admin',
-        ImageURL: 'https://via.placeholder.com/800x400.png?text=Blog+3',
+        ImageURL: 'https://placehold.co/800x400/e2e8f0/64748b?text=Blog+3',
         IsActive: true
       }
     ]);

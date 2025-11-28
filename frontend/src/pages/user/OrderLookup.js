@@ -50,8 +50,8 @@ import {
 import { retryGuestVnpayPaymentAPI } from "../../api";
 
 // --- Constants ---
-const API_BASE = "http://localhost:5000";
-const PLACEHOLDER = `${API_BASE}/placeholder.jpg`;
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+const PLACEHOLDER = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
 
 const STATUS_META = {
     PendingPayment: { label: "Chờ thanh toán" },

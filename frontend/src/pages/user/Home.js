@@ -20,8 +20,8 @@ import { getProductVariantsAPI } from "../../api";
 import VariantPickerModal from "../../components/VariantPickerModal";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
-const PLACEHOLDER_IMG = `/placeholder.jpg`;
-const PLACEHOLDER_BLOG = `/blog-placeholder.jpg`;
+const PLACEHOLDER_IMG = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
+const PLACEHOLDER_BLOG = `https://placehold.co/800x400/e2e8f0/64748b?text=Blog`;
 const API = API_BASE_URL;
 
 // Nếu sau này có logic riêng cho ảnh local thì xử lý thêm ở đây

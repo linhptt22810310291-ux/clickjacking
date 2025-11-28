@@ -29,7 +29,7 @@ import {
   fetchPaginatedWishlist, fetchUserWalletVouchers, resetVoucherStatus
 } from '../../redux/profileSlice';
 
-const PLACEHOLDER = `/placeholder.jpg`;
+const PLACEHOLDER = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 // Chuẩn hóa URL ảnh

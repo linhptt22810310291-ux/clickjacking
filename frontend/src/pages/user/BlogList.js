@@ -18,7 +18,7 @@ import {
 } from '../../redux/blogSlice';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
-const PLACEHOLDER = '/blog-placeholder.jpg';
+const PLACEHOLDER = 'https://placehold.co/800x400/e2e8f0/64748b?text=Blog';
 const LIMIT = 6;
 
 export default function BlogList() {

@@ -3,7 +3,7 @@ import { Modal, Button, Spinner, InputGroup, Form, Alert } from 'react-bootstrap
 import { toast } from 'react-toastify';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
-const PLACEHOLDER_IMG = `/placeholder.jpg`;
+const PLACEHOLDER_IMG = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
 
 // Component nút chọn (Màu/Size)
 function Pill({ active, disabled, children, onClick }) {
