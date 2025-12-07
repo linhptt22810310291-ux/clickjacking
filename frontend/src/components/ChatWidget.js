@@ -3,7 +3,7 @@ import { Button, Card, Form, Badge, Spinner } from 'react-bootstrap';
 import { FaComments, FaTimes, FaPaperPlane, FaUser, FaRobot, FaHeadset } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
-import { selectUser, selectIsAuthenticated } from '../redux/reducers/authSlice';
+import { selectUser, selectIsAuthenticated } from '../redux/userSlice';
 import {
   startChatConversationAPI,
   sendChatMessageAPI,
