@@ -69,7 +69,6 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
     if (autoOpen && productContext) {
       handleOpenChat();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpen, productContext]);
 
   // Fetch products for selector
