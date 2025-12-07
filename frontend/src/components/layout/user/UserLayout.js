@@ -2,6 +2,7 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import ChatWidget from "../../ChatWidget";
 
 export default function UserLayout() {
   return (
@@ -11,6 +12,7 @@ export default function UserLayout() {
         <Outlet /> {/* ✅ render các route con như Home, Products,... */}
       </main>
       <Footer />
+      <ChatWidget /> {/* 💬 Chat support widget */}
     </div>
   );
 }

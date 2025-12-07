@@ -315,3 +315,56 @@ export const getReviewByIdAdminAPI = (id) =>
 
 export const deleteReviewAPI = (id) =>
     api.delete(`/admin/reviews/${id}`);
+
+// =============================================
+// ===            CHAT API                   ===
+// =============================================
+
+// --- Chat (User/Guest) ---
+export const startChatConversationAPI = (data) =>
+    api.post('/chat/conversations', data);
+
+export const sendChatMessageAPI = (conversationId, data) =>
+    api.post(`/chat/conversations/${conversationId}/messages`, data);
+
+export const getChatMessagesAPI = (conversationId, params) =>
+    api.get(`/chat/conversations/${conversationId}/messages`, { params });
+
+export const requestHumanSupportAPI = (conversationId, data) =>
+    api.post(`/chat/conversations/${conversationId}/request-human`, data);
+
+// --- Chat (Admin) ---
+export const getAdminChatConversationsAPI = (params) =>
+    api.get('/admin/chat/conversations', { params });
+
+export const getAdminChatConversationDetailAPI = (id) =>
+    api.get(`/admin/chat/conversations/${id}`);
+
+export const adminSendChatMessageAPI = (conversationId, data) =>
+    api.post(`/admin/chat/conversations/${conversationId}/messages`, data);
+
+export const closeChatConversationAPI = (conversationId) =>
+    api.put(`/admin/chat/conversations/${conversationId}/close`);
+
+// --- Chat Banned Keywords (Admin) ---
+export const getBannedKeywordsAPI = () =>
+    api.get('/admin/chat/banned-keywords');
+
+export const addBannedKeywordAPI = (data) =>
+    api.post('/admin/chat/banned-keywords', data);
+
+export const deleteBannedKeywordAPI = (id) =>
+    api.delete(`/admin/chat/banned-keywords/${id}`);
+
+// --- Chat Auto Replies (Admin) ---
+export const getAutoRepliesAPI = () =>
+    api.get('/admin/chat/auto-replies');
+
+export const addAutoReplyAPI = (data) =>
+    api.post('/admin/chat/auto-replies', data);
+
+export const updateAutoReplyAPI = (id, data) =>
+    api.put(`/admin/chat/auto-replies/${id}`, data);
+
+export const deleteAutoReplyAPI = (id) =>
+    api.delete(`/admin/chat/auto-replies/${id}`);

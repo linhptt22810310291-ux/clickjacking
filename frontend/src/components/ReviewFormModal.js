@@ -15,8 +15,9 @@ function ReviewFormModal({ show, onHide, item, onReviewSubmitted }) {
   const productId = item?.variant?.product?.ProductID || item?.ProductID;
   const productName = item?.ProductName || '';
 
-  // OrderID được truyền kèm từ Profile.jsx (đánh giá theo đơn)
+  // OrderID và OrderItemID được truyền kèm từ Profile.jsx (đánh giá theo đơn)
   const orderId = item?.orderId;
+  const orderItemId = item?.OrderItemID || item?.orderItemId; // ✅ NEW: Get OrderItemID for Size/Color tracking
 
   // ---- Chuẩn hóa ảnh + chọn đúng ảnh theo biến thể
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
@@ -68,6 +69,7 @@ function ReviewFormModal({ show, onHide, item, onReviewSubmitted }) {
 
     const formData = new FormData();
     formData.append('orderId', orderId);
+    if (orderItemId) formData.append('orderItemId', orderItemId); // ✅ NEW: Send OrderItemID
     formData.append('rating', rating);
     formData.append('comment', comment || '');
     // BE đọc field 'files'

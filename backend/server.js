@@ -538,6 +538,13 @@ apiRouter.use('/admin/products', adminProductsRouter);
 apiRouter.use('/admin/reviews', adminReviewsRouter);
 apiRouter.use('/admin/users', adminUsersRouter);
 
+// Chat routes
+var chatRoutes = require('./routes/chat.routes');
+var adminChatRouter = require('./routes/admin/chatAdmin');
+apiRouter.use('/chat', chatRoutes);
+apiRouter.use('/admin/chat', adminChatRouter);
+console.log('  ✅ chat routes mounted');
+
 // 🛡️ Security Monitor (PUBLIC - không cần auth)
 const securityRouter = require('./routes/admin/security.route');
 apiRouter.use('/security', securityRouter);

@@ -634,6 +634,12 @@ export default function ProductDetail() {
                                     {new Date(
                                       r.CreatedAt
                                     ).toLocaleString()}
+                                    {/* ✅ NEW: Display Size/Color if available */}
+                                    {(r.Size || r.Color) && (
+                                      <span className="ms-2">
+                                        | Phân loại: {r.Size && `Size ${r.Size}`}{r.Size && r.Color && ' - '}{r.Color && `Màu ${r.Color}`}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </div>

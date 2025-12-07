@@ -260,18 +260,29 @@ export default function AdminOrders() {
     const renderTable = (orders, pagination, type) => (
         <>
             <Table striped bordered hover responsive>
-                <thead><tr><th>ID</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th><th>Ngày đặt</th></tr></thead>
+                <thead><tr><th>ID</th><th>Khách hàng</th><th>Tổng tiền</th><th>Thanh toán</th><th>Vận chuyển</th><th>Trạng thái</th><th>Ngày đặt</th></tr></thead>
                 <tbody>
                     {orders.map(o => {
                         // SỬA: Lấy ID và Thông tin KH đúng cách
                         const id = (type === 'user') ? o.OrderID : o.GuestOrderID;
                         const customerInfo = (type === 'user') ? o.user?.Username : o.FullName;
+                        // ✅ NEW: Get payment method and shipping provider
+                        const paymentMethod = o.PaymentMethod || 'COD';
+                        const shippingProvider = o.ShippingProvider || 'Chưa chọn';
                         
                         return (
                             <tr key={`${type}-${id}`} onClick={() => handleViewDetail(type, id)} style={{ cursor: 'pointer' }}>
                                 <td>#{id}</td>
                                 <td>{customerInfo || 'N/A'}</td>
                                 <td>{fmtVND(o.TotalAmount)}</td>
+                                <td>
+                                    <span className={`badge ${paymentMethod === 'VNPAY' ? 'bg-primary' : 'bg-secondary'}`}>
+                                        {paymentMethod}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>{shippingProvider}</small>
+                                </td>
                                 <td>
                                    <Form.Select
                                         size="sm"

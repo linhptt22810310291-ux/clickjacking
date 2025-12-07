@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
       Review.belongsTo(models.User,    { foreignKey: 'UserID',   as: 'user' });
       Review.belongsTo(models.Product, { foreignKey: 'ProductID',as: 'product' });
       Review.belongsTo(models.Order,   { foreignKey: 'OrderID',  as: 'order' }); // ✅
+      Review.belongsTo(models.OrderItem, { foreignKey: 'OrderItemID', as: 'orderItem' }); // ✅ NEW: Link to specific item
       Review.hasMany(models.ReviewMedia, { foreignKey: 'ReviewID', as: 'media' });
     }
   }
@@ -16,6 +17,7 @@ module.exports = (sequelize, DataTypes) => {
     UserID:    { type: DataTypes.INTEGER, allowNull: false, field: 'UserID' },
     ProductID: { type: DataTypes.INTEGER, allowNull: false, field: 'ProductID' },
     OrderID:   { type: DataTypes.INTEGER, allowNull: false, field: 'OrderID' }, // ✅
+    OrderItemID: { type: DataTypes.INTEGER, allowNull: true, field: 'OrderItemID' }, // ✅ NEW: Link to specific order item for Size/Color
     Rating:    { type: DataTypes.INTEGER, allowNull: false, validate: { min: 1, max: 5 }, field: 'Rating' },
     Comment:   { type: DataTypes.STRING(500), allowNull: true, field: 'Comment' },
     CreatedAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW, field: 'CreatedAt' }

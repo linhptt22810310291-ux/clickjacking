@@ -59,6 +59,18 @@ exports.getProductReviews = async (req, res) => {
                     model: db.ReviewMedia,
                     as: 'media',
                     attributes: ['MediaURL', 'IsVideo']
+                },
+                // ✅ NEW: Include OrderItem to get Size/Color via variant
+                {
+                    model: db.OrderItem,
+                    as: 'orderItem',
+                    attributes: ['OrderItemID', 'VariantID'],
+                    required: false, // Allow null for old reviews
+                    include: [{
+                        model: db.ProductVariant,
+                        as: 'variant',
+                        attributes: ['Size', 'Color']
+                    }]
                 }
             ],
             limit,
@@ -79,6 +91,11 @@ exports.getProductReviews = async (req, res) => {
                     ...m,
                     MediaURL: m.MediaURL.startsWith('http') ? m.MediaURL : `${BASE_URL}${m.MediaURL}`
                 }));
+            }
+            // ✅ NEW: Extract Size/Color from orderItem.variant
+            if (plainReview.orderItem?.variant) {
+                plainReview.Size = plainReview.orderItem.variant.Size;
+                plainReview.Color = plainReview.orderItem.variant.Color;
             }
             return plainReview;
         });
@@ -129,28 +146,54 @@ exports.createReview = async (req, res) => {
   try {
     const userId = req.user.id;
     const productId = parseInt(req.params.productId, 10);
-  const rating = parseInt(req.body.rating, 10);
-  const orderId = parseInt(req.body.orderId, 10);
-  const comment = req.body.comment;
+    const rating = parseInt(req.body.rating, 10);
+    const orderId = parseInt(req.body.orderId, 10);
+    const orderItemId = req.body.orderItemId ? parseInt(req.body.orderItemId, 10) : null; // ✅ NEW
+    const comment = req.body.comment;
+    
     if (!Number.isInteger(orderId)) {
-    return res.status(400).json({ errors: [{ msg: 'Thiếu hoặc sai OrderID.' }] });
-  }
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return res.status(400).json({ errors: [{ msg: 'Rating không hợp lệ (1–5).' }] });
-  }
+      return res.status(400).json({ errors: [{ msg: 'Thiếu hoặc sai OrderID.' }] });
+    }
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ errors: [{ msg: 'Rating không hợp lệ (1–5).' }] });
+    }
 
     // 1) Kiểm tra đơn hàng hợp lệ cho user & đã giao
-    const eligibleItem = await db.OrderItem.findOne({
-      include: [
-        { model: db.ProductVariant, as: 'variant', where: { ProductID: productId }, attributes: [], required: true },
-        { model: db.Order, as: 'order', where: { UserID: userId, Status: 'Delivered', OrderID: orderId }, attributes: [], required: true }
-      ],
-      transaction: t
-    });
+    // ✅ IMPROVED: Không kiểm tra Status='Delivered' để review vẫn hợp lệ khi status thay đổi
+    // Thay vào đó, kiểm tra đơn hàng từng được giao (có trong lịch sử hoặc status hiện tại)
+    const orderCondition = { UserID: userId, OrderID: orderId };
+    
+    // Nếu có orderItemId, tìm chính xác item đó
+    let eligibleItem;
+    if (orderItemId) {
+      eligibleItem = await db.OrderItem.findOne({
+        where: { OrderItemID: orderItemId, OrderID: orderId },
+        include: [
+          { model: db.ProductVariant, as: 'variant', where: { ProductID: productId }, attributes: ['VariantID'], required: true },
+          { model: db.Order, as: 'order', where: orderCondition, attributes: ['Status'], required: true }
+        ],
+        transaction: t
+      });
+    } else {
+      // Fallback: tìm bất kỳ item nào của product trong order
+      eligibleItem = await db.OrderItem.findOne({
+        include: [
+          { model: db.ProductVariant, as: 'variant', where: { ProductID: productId }, attributes: ['VariantID'], required: true },
+          { model: db.Order, as: 'order', where: orderCondition, attributes: ['Status'], required: true }
+        ],
+        transaction: t
+      });
+    }
 
     if (!eligibleItem) {
       await t.rollback();
-      return res.status(403).json({ errors: [{ msg: 'Bạn chỉ có thể đánh giá sản phẩm thuộc đơn đã giao của chính bạn.' }] });
+      return res.status(403).json({ errors: [{ msg: 'Bạn chỉ có thể đánh giá sản phẩm thuộc đơn hàng của chính bạn.' }] });
+    }
+
+    // ✅ IMPROVED: Chỉ kiểm tra đơn đã Delivered tại thời điểm review
+    if (eligibleItem.order.Status !== 'Delivered') {
+      await t.rollback();
+      return res.status(403).json({ errors: [{ msg: 'Chỉ có thể đánh giá khi đơn hàng đã giao thành công.' }] });
     }
 
     // 2) Ngăn trùng theo (UserID, ProductID, OrderID)
@@ -163,11 +206,12 @@ exports.createReview = async (req, res) => {
       return res.status(409).json({ errors: [{ msg: 'Bạn đã đánh giá sản phẩm này cho đơn hàng này rồi.' }] });
     }
 
-    // 3) Tạo review có OrderID
+    // 3) Tạo review có OrderID và OrderItemID (để lưu Size/Color)
     const newReview = await db.Review.create({
       UserID: userId,
       ProductID: productId,
-      OrderID: orderId,            // ✅ BẮT BUỘC
+      OrderID: orderId,
+      OrderItemID: orderItemId || eligibleItem.OrderItemID, // ✅ NEW: Lưu OrderItemID
       Rating: rating,
       Comment: comment || null
     }, { transaction: t });
@@ -197,11 +241,18 @@ exports.createReview = async (req, res) => {
     const finalReview = await db.Review.findByPk(newReview.ReviewID, {
        include: [
          { model: db.User, as: 'user', attributes: ['FullName', 'AvatarURL'] },
-         { model: db.ReviewMedia, as: 'media', attributes: ['MediaURL', 'IsVideo'] }
+         { model: db.ReviewMedia, as: 'media', attributes: ['MediaURL', 'IsVideo'] },
+         // ✅ NEW: Include variant for Size/Color
+         { 
+           model: db.OrderItem, 
+           as: 'orderItem', 
+           attributes: ['OrderItemID'],
+           include: [{ model: db.ProductVariant, as: 'variant', attributes: ['Size', 'Color'] }]
+         }
        ]
      });
   
-const plain = finalReview.get({ plain: true });
+    const plain = finalReview.get({ plain: true });
     if (plain.user?.AvatarURL && !plain.user.AvatarURL.startsWith('http')) {
       plain.user.AvatarURL = `${BASE_URL}${plain.user.AvatarURL}`;
     }
@@ -210,6 +261,11 @@ const plain = finalReview.get({ plain: true });
         ...m,
         MediaURL: m.MediaURL.startsWith('http') ? m.MediaURL : `${BASE_URL}${m.MediaURL}`
       }));
+    }
+    // ✅ NEW: Add Size/Color to response
+    if (plain.orderItem?.variant) {
+      plain.Size = plain.orderItem.variant.Size;
+      plain.Color = plain.orderItem.variant.Color;
     }
     return res.status(201).json(plain);
 

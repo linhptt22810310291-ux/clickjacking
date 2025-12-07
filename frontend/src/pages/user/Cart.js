@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
-import { Table, Button, Form, Alert, Stack, Modal, Spinner } from "react-bootstrap";
+import { Table, Button, Form, Alert, Stack, Modal, Spinner, Badge } from "react-bootstrap";
 import { toast } from 'react-toastify';
 import { Image } from 'react-bootstrap';  // SỬA: Import Image nếu dùng (giả sử từ bootstrap)
 
@@ -77,6 +77,19 @@ function Cart() {
         if (!cartItems.length) return toast.error("Giỏ hàng trống.");
         const itemsToPay = selectedIds.length ? cartItems.filter(i => selectedIds.includes(i.CartItemID)) : cartItems;
         if (!itemsToPay.length) return toast.warn("Vui lòng chọn ít nhất 1 sản phẩm để thanh toán.");
+        
+        // Kiểm tra xem có sản phẩm hết hàng trong danh sách thanh toán không
+        const outOfStockItems = itemsToPay.filter(item => item.variant.StockQuantity <= 0);
+        if (outOfStockItems.length > 0) {
+            return toast.error(`Có ${outOfStockItems.length} sản phẩm đã hết hàng. Vui lòng bỏ chọn hoặc xóa sản phẩm hết hàng.`);
+        }
+        
+        // Kiểm tra xem có sản phẩm vượt quá tồn kho không
+        const overStockItems = itemsToPay.filter(item => item.Quantity > item.variant.StockQuantity);
+        if (overStockItems.length > 0) {
+            return toast.error(`Có ${overStockItems.length} sản phẩm vượt quá số lượng tồn kho. Vui lòng điều chỉnh số lượng.`);
+        }
+        
         navigate("/checkout", { state: { selectedItems: itemsToPay } });
         // SỬA: Clear cart sau checkout (dispatch ở đây hoặc ở checkout success)
         // dispatch(clearCartLocal());  // Uncomment nếu clear ngay (nhưng tốt hơn clear sau place order ở backend)
@@ -103,15 +116,39 @@ function Cart() {
     };
 
     // --- Logic chọn item ---
-    const toggleSelect = (cartItemId) => setSelectedIds(prev => prev.includes(cartItemId) ? prev.filter(id => id !== cartItemId) : [...prev, cartItemId]);
-    const allChecked = cartItems.length > 0 && selectedIds.length === cartItems.length;
-    const toggleSelectAll = () => setSelectedIds(allChecked ? [] : cartItems.map(i => i.CartItemID));
+    // Chỉ cho phép chọn những item còn hàng
+    const availableItems = cartItems.filter(item => item.variant.StockQuantity > 0);
+    const toggleSelect = (cartItemId) => {
+        const item = cartItems.find(i => i.CartItemID === cartItemId);
+        if (item && item.variant.StockQuantity <= 0) {
+            return toast.warn("Không thể chọn sản phẩm đã hết hàng.");
+        }
+        setSelectedIds(prev => prev.includes(cartItemId) ? prev.filter(id => id !== cartItemId) : [...prev, cartItemId]);
+    };
+    const allChecked = availableItems.length > 0 && availableItems.every(item => selectedIds.includes(item.CartItemID));
+    const toggleSelectAll = () => {
+        if (allChecked) {
+            setSelectedIds([]);
+        } else {
+            // Chỉ chọn những item còn hàng
+            setSelectedIds(availableItems.map(i => i.CartItemID));
+        }
+    };
 
     const totalToShow = useMemo(() => {
         if (!selectedIds.length) return totalAll;
         return cartItems.filter(it => selectedIds.includes(it.CartItemID))
                        .reduce((sum, it) => sum + (it.Price * it.Quantity), 0);
     }, [cartItems, selectedIds, totalAll]);
+
+    // Tính số sản phẩm hết hàng và vượt tồn kho
+    const outOfStockCount = useMemo(() => 
+        cartItems.filter(item => item.variant.StockQuantity <= 0).length
+    , [cartItems]);
+    
+    const overStockCount = useMemo(() => 
+        cartItems.filter(item => item.variant.StockQuantity > 0 && item.Quantity > item.variant.StockQuantity).length
+    , [cartItems]);
 
     if (cartStatus === 'loading' && cartItems.length === 0) {
         return <div className="text-center p-5"><Spinner animation="border" /></div>;
@@ -146,50 +183,102 @@ function Cart() {
                             </tr>
                         </thead>
                         <tbody>
-                            {cartItems.map((item) => (
-                                <tr key={item.CartItemID}>
+                            {cartItems.map((item) => {
+                                const isOutOfStock = item.variant.StockQuantity <= 0;
+                                const isOverStock = item.Quantity > item.variant.StockQuantity;
+                                
+                                return (
+                                <tr key={item.CartItemID} style={{ 
+                                    opacity: isOutOfStock ? 0.6 : 1,
+                                    backgroundColor: isOutOfStock ? '#f8d7da' : 'inherit'
+                                }}>
                                     <td style={{ textAlign: "center", verticalAlign: 'middle' }}>
-                                        <Form.Check type="checkbox" checked={selectedIds.includes(item.CartItemID)} onChange={() => toggleSelect(item.CartItemID)} />
+                                        <Form.Check 
+                                            type="checkbox" 
+                                            checked={selectedIds.includes(item.CartItemID)} 
+                                            onChange={() => toggleSelect(item.CartItemID)}
+                                            disabled={isOutOfStock}
+                                        />
                                     </td>
                                     <td>
                                         <div className="d-flex align-items-center gap-2">
-                                            <img src={resolveImageUrl(item.variant.ProductImage)} alt={item.variant.product.Name} style={{ width: 60, height: 60, objectFit: "cover" }} onError={(e) => e.target.src = PLACEHOLDER_IMG} />  {/* SỬA: Dùng <img> thay Image nếu không import */}
+                                            <div style={{ position: 'relative' }}>
+                                                <img src={resolveImageUrl(item.variant.ProductImage)} alt={item.variant.product.Name} style={{ width: 60, height: 60, objectFit: "cover", filter: isOutOfStock ? 'grayscale(50%)' : 'none' }} onError={(e) => e.target.src = PLACEHOLDER_IMG} />
+                                                {isOutOfStock && (
+                                                    <Badge bg="danger" style={{ 
+                                                        position: 'absolute', 
+                                                        top: '50%', 
+                                                        left: '50%', 
+                                                        transform: 'translate(-50%, -50%)',
+                                                        fontSize: '9px',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        HẾT HÀNG
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             <div>
                                                 <Link to={`/product/${item.variant.ProductID}`} className="fw-semibold text-decoration-none text-dark">{item.variant.product.Name}</Link>
+                                                {isOutOfStock && <div><Badge bg="danger" className="mt-1">Sản phẩm đã hết hàng</Badge></div>}
+                                                {!isOutOfStock && isOverStock && (
+                                                    <div><Badge bg="warning" text="dark" className="mt-1">Vượt quá tồn kho (còn {item.variant.StockQuantity})</Badge></div>
+                                                )}
                                             </div>
                                         </div>
                                     </td>
                                     <td style={{ verticalAlign: 'middle' }}>
                                         <div><small>Màu: <strong>{item.variant.Color}</strong></small></div>
                                         <div><small>Size: <strong>{item.variant.Size}</strong></small></div>
-                                        <Button variant="link" size="sm" className="p-0" onClick={() => { setEditingItem(item); setShowPicker(true); }} disabled={updating}>
+                                        <Button variant="link" size="sm" className="p-0" onClick={() => { setEditingItem(item); setShowPicker(true); }} disabled={updating || isOutOfStock}>
                                             {updating ? <Spinner size="sm" /> : 'Thay đổi'}
-                                        </Button>  {/* SỬA: Disable + spinner khi updating */}
+                                        </Button>  {/* SỬA: Disable + spinner khi updating hoặc hết hàng */}
                                     </td>
                                     <td className="text-end" style={{ verticalAlign: 'middle' }}>{item.Price.toLocaleString('vi-VN')}₫</td>
                                     <td style={{ verticalAlign: 'middle' }}>
                                         <Form.Control
                                             type="number"
                                             min="1"
+                                            max={item.variant.StockQuantity || 1}
                                             value={item.Quantity}
                                             onChange={(e) => handleUpdateQuantity(item.CartItemID, parseInt(e.target.value) || 1, item.variant.StockQuantity)}
                                             style={{ textAlign: 'center' }}
+                                            disabled={isOutOfStock}
+                                            className={isOverStock ? 'border-warning' : ''}
                                         />
+                                        {!isOutOfStock && (
+                                            <small className="text-muted d-block text-center">Còn {item.variant.StockQuantity}</small>
+                                        )}
                                     </td>
-                                    <td className="text-end" style={{ verticalAlign: 'middle' }}>{(item.Price * item.Quantity).toLocaleString('vi-VN')}₫</td>
+                                    <td className="text-end" style={{ verticalAlign: 'middle', textDecoration: isOutOfStock ? 'line-through' : 'none' }}>
+                                        {(item.Price * item.Quantity).toLocaleString('vi-VN')}₫
+                                    </td>
                                     <td className="text-center" style={{ verticalAlign: 'middle' }}>
                                         <Button variant="danger" size="sm" onClick={() => handleRemoveItem(item.CartItemID)}>Xóa</Button>
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                     </Table>
 
                     <div className="d-flex justify-content-between align-items-center mt-3">
                         <Button variant="outline-secondary" onClick={() => navigate('/products')}>← Tiếp tục mua sắm</Button>
                         <div className="text-end">
+                            {outOfStockCount > 0 && (
+                                <Alert variant="danger" className="py-1 px-2 mb-2" style={{ fontSize: '13px' }}>
+                                    <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                                    {outOfStockCount} sản phẩm đã hết hàng
+                                </Alert>
+                            )}
+                            {overStockCount > 0 && (
+                                <Alert variant="warning" className="py-1 px-2 mb-2" style={{ fontSize: '13px' }}>
+                                    <i className="bi bi-exclamation-triangle me-1"></i>
+                                    {overStockCount} sản phẩm vượt quá tồn kho
+                                </Alert>
+                            )}
                             <h4 className="mb-2">Tổng cộng: {totalToShow.toLocaleString('vi-VN')}₫</h4>
-                            <Button variant="success" onClick={handleCheckout} disabled={updating}>Thanh toán</Button>
+                            <Button variant="success" onClick={handleCheckout} disabled={updating || availableItems.length === 0}>
+                                Thanh toán {selectedIds.length > 0 ? `(${selectedIds.length} sản phẩm)` : ''}
+                            </Button>
                         </div>
                     </div>
                 </>

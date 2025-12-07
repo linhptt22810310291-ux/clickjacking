@@ -48,6 +48,7 @@ import AdminReviews from "./pages/admin/AdminReviews";
 import AdminCoupon from "./pages/admin/AdminCoupon";
 import PaymentMethods from "./pages/admin/PaymentMethods";
 import SecurityMonitor from "./pages/admin/SecurityMonitor"; // 🛡️ Security Dashboard
+import AdminChat from "./pages/admin/AdminChat"; // 💬 Chat Management
 
 // Component bảo vệ route
 const PrivateRoute = ({ children, isAdmin = false }) => {
@@ -153,6 +154,7 @@ function App() {
           <Route path="coupons" element={<AdminCoupon />} />
           <Route path="payment-methods" element={<PaymentMethods />} />
           <Route path="security" element={<SecurityMonitor />} />
+          <Route path="chat" element={<AdminChat />} />
           {/* Mặc định /admin → dashboard */}
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
         </Route>

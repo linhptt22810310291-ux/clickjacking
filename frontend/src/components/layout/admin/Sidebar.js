@@ -35,6 +35,7 @@ const Sidebar = () => {
           <li><NavLink to="/admin/blogs">Quản lý tin tức</NavLink></li>
           <li><NavLink to="/admin/reviews">Quản lý đánh giá</NavLink></li>
           <li><NavLink to="/admin/coupons">Quản lý khuyến mãi</NavLink></li>
+          <li><NavLink to="/admin/chat">💬 Quản lý Chat</NavLink></li>
           <li><NavLink to="/admin/security">🛡️ Bảo mật</NavLink></li>
         </ul>
       </div>

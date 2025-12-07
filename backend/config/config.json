@@ -25,10 +25,19 @@
     "dialect": "mssql"
   },
   "production": {
-    "username": "sa",
-    "password": "12356789",
-    "database": "ShoeStoreDB10610",
-    "host": "localhost",
-    "dialect": "mssql"
+    "dialect": "postgres",
+    "use_env_variable": "DATABASE_URL",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    },
+    "pool": {
+      "max": 5,
+      "min": 0,
+      "acquire": 30000,
+      "idle": 10000
+    }
   }
 }
