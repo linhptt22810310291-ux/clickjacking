@@ -346,6 +346,9 @@ export const adminSendChatMessageAPI = (conversationId, data) =>
 export const closeChatConversationAPI = (conversationId) =>
     api.put(`/admin/chat/conversations/${conversationId}/close`);
 
+export const reopenChatConversationAPI = (conversationId) =>
+    api.put(`/admin/chat/conversations/${conversationId}/reopen`);
+
 // --- Chat Banned Keywords (Admin) ---
 export const getBannedKeywordsAPI = () =>
     api.get('/admin/chat/banned-keywords');

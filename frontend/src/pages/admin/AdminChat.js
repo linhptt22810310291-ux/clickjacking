@@ -7,6 +7,7 @@ import {
   getAdminChatConversationDetailAPI,
   adminSendChatMessageAPI,
   closeChatConversationAPI,
+  reopenChatConversationAPI,
   getBannedKeywordsAPI,
   addBannedKeywordAPI,
   deleteBannedKeywordAPI,
@@ -165,11 +166,26 @@ export default function AdminChat() {
       await closeChatConversationAPI(selectedConversation.ConversationID);
       toast.success('Đã đóng hội thoại.');
       loadConversations();
-      setSelectedConversation(null);
-      setMessages([]);
+      // Reload chi tiết để hiển thị trạng thái mới
+      loadConversationDetail(selectedConversation);
     } catch (error) {
       console.error('Close conversation error:', error);
       toast.error('Không thể đóng hội thoại.');
+    }
+  };
+
+  // Reopen conversation - Admin có thể mở lại hội thoại đã đóng
+  const handleReopenConversation = async () => {
+    if (!selectedConversation) return;
+    
+    try {
+      await reopenChatConversationAPI(selectedConversation.ConversationID);
+      toast.success('Đã mở lại hội thoại. Bạn có thể tiếp tục tư vấn.');
+      loadConversations();
+      loadConversationDetail(selectedConversation);
+    } catch (error) {
+      console.error('Reopen conversation error:', error);
+      toast.error('Không thể mở lại hội thoại.');
     }
   };
 
@@ -384,9 +400,13 @@ export default function AdminChat() {
                         <Badge bg={statusColors[selectedConversation.Status]} className="me-2">
                           {statusLabels[selectedConversation.Status]}
                         </Badge>
-                        {selectedConversation.Status !== 'closed' && (
+                        {selectedConversation.Status !== 'closed' ? (
                           <Button variant="outline-danger" size="sm" onClick={handleCloseConversation}>
                             <FaTimes /> Đóng
+                          </Button>
+                        ) : (
+                          <Button variant="outline-success" size="sm" onClick={handleReopenConversation}>
+                            <FaComments /> Mở lại
                           </Button>
                         )}
                       </div>

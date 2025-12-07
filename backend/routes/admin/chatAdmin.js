@@ -12,6 +12,7 @@ router.get('/conversations', chatController.getConversationsAdmin);
 router.get('/conversations/:id', chatController.getConversationDetailAdmin);
 router.post('/conversations/:id/messages', chatController.adminSendMessage);
 router.put('/conversations/:id/close', chatController.closeConversation);
+router.put('/conversations/:id/reopen', chatController.reopenConversation);
 
 // Banned keywords
 router.get('/banned-keywords', chatController.getBannedKeywords);

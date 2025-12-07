@@ -49,6 +49,7 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productSent, setProductSent] = useState(false); // Track if product context was sent
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -125,13 +126,28 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
       setConversation(data.conversation);
       setMessages(data.messages || []);
       setShowGuestForm(false);
+      
+      // Auto send product message if productContext exists and hasn't been sent
+      if (productContext?.productId && !productSent) {
+        setProductSent(true);
+        // Send product info after a short delay
+        setTimeout(() => {
+          const productMessage = `📦 Tôi muốn hỏi về sản phẩm này:\n\n🏷️ ${productContext.productName}\n🔗 ${window.location.href}`;
+          sendChatMessageAPI(data.conversation.ConversationID, { 
+            message: productMessage,
+            guestSessionId: user ? undefined : getGuestSessionId()
+          }).then(res => {
+            setMessages(prev => [...prev, ...res.data.messages]);
+          }).catch(err => console.error('Auto send product error:', err));
+        }, 500);
+      }
     } catch (error) {
       console.error('Init conversation error:', error);
       toast.error('Không thể kết nối chat. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
-  }, [user, productContext, orderContext]);
+  }, [user, productContext, orderContext, productSent]);
 
   // Poll for new messages
   const pollMessages = useCallback(async () => {
@@ -562,11 +578,12 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
         onHide={() => setShowProductSelector(false)}
         size="lg"
         centered
+        className="chat-product-selector-modal"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Chọn sản phẩm</Modal.Title>
+          <Modal.Title>Chọn sản phẩm để gửi</Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <Modal.Body style={{ maxHeight: '65vh', overflowY: 'auto' }} className="chat-product-selector">
           <InputGroup className="mb-3">
             <InputGroup.Text><FaSearch /></InputGroup.Text>
             <Form.Control
@@ -581,29 +598,27 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
               <Spinner animation="border" variant="primary" />
             </div>
           ) : (
-            <div className="row g-2">
+            <div className="row g-3">
               {products.map(product => (
-                <div key={product.ProductID} className="col-6 col-md-4">
+                <div key={product.ProductID} className="col-6 col-md-4 col-lg-3">
                   <div 
-                    className={`card h-100 cursor-pointer ${selectedProduct?.ProductID === product.ProductID ? 'border-primary' : ''}`}
+                    className={`card h-100 ${selectedProduct?.ProductID === product.ProductID ? 'selected border-primary' : ''}`}
                     onClick={() => setSelectedProduct(product)}
-                    style={{ cursor: 'pointer' }}
                   >
                     <img 
                       src={resolveImageUrl(product.DefaultImage)} 
                       alt={product.Name}
                       className="card-img-top"
-                      style={{ height: 120, objectFit: 'cover' }}
                     />
-                    <div className="card-body p-2">
-                      <h6 className="card-title small text-truncate mb-1">{product.Name}</h6>
-                      <p className="card-text text-danger small mb-0">
+                    <div className="card-body">
+                      <h6 className="card-title">{product.Name}</h6>
+                      <p className="card-text text-danger mb-0">
                         {Number(product.DiscountedPrice || product.Price).toLocaleString('vi-VN')}₫
                       </p>
                     </div>
                     {selectedProduct?.ProductID === product.ProductID && (
-                      <div className="position-absolute top-0 end-0 m-1">
-                        <Badge bg="primary"><FaCheck /></Badge>
+                      <div className="position-absolute top-0 end-0 m-2">
+                        <Badge bg="primary" className="rounded-circle p-2"><FaCheck /></Badge>
                       </div>
                     )}
                   </div>
@@ -611,8 +626,9 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
               ))}
               
               {products.length === 0 && (
-                <div className="col-12 text-center text-muted py-4">
-                  Không tìm thấy sản phẩm
+                <div className="col-12 text-center text-muted py-5">
+                  <FaBox size={40} className="mb-2 opacity-50" />
+                  <p>Không tìm thấy sản phẩm</p>
                 </div>
               )}
             </div>

@@ -450,6 +450,39 @@ exports.closeConversation = async (req, res) => {
   }
 };
 
+/**
+ * @route   PUT /api/admin/chat/conversations/:id/reopen
+ * @desc    Reopen a closed conversation
+ * @access  Admin
+ */
+exports.reopenConversation = async (req, res) => {
+  try {
+    const conversationId = parseInt(req.params.id, 10);
+    
+    const conversation = await db.ChatConversation.findByPk(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ errors: [{ msg: 'Không tìm thấy cuộc hội thoại.' }] });
+    }
+    
+    await conversation.update({ 
+      Status: 'open',
+      IsBotHandling: false // Admin tiếp quản
+    });
+    
+    // Add system message
+    await db.ChatMessage.create({
+      ConversationID: conversationId,
+      SenderType: 'bot',
+      Message: 'Cuộc hội thoại đã được mở lại. Nhân viên hỗ trợ sẽ tiếp tục tư vấn cho bạn.'
+    });
+    
+    res.json({ message: 'Đã mở lại cuộc hội thoại.' });
+  } catch (error) {
+    console.error('REOPEN CONVERSATION ERROR:', error);
+    res.status(500).json({ errors: [{ msg: 'Lỗi máy chủ' }] });
+  }
+};
+
 // ========================================
 // BANNED KEYWORDS MANAGEMENT
 // ========================================
