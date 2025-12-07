@@ -3,7 +3,7 @@ import { Button, Card, Form, Badge, Spinner } from 'react-bootstrap';
 import { FaComments, FaTimes, FaPaperPlane, FaUser, FaRobot, FaHeadset } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
-import { selectCurrentUser } from '../redux/authSlice';
+import { selectUser, selectIsAuthenticated } from '../redux/reducers/authSlice';
 import {
   startChatConversationAPI,
   sendChatMessageAPI,
@@ -34,7 +34,8 @@ function ChatWidget({ productContext, orderContext }) {
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const user = useSelector(selectCurrentUser);
+  const user = useSelector(selectUser);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   const pollIntervalRef = useRef(null);
 
   const scrollToBottom = () => {
