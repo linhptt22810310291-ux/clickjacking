@@ -26,8 +26,10 @@ import {
   FaChevronRight,
   FaHeart,
   FaUserCircle,
+  FaComments,
 } from "react-icons/fa";
 import { FiMinus, FiPlus, FiCheckCircle, FiShoppingCart, FiZap } from "react-icons/fi";
+import ChatWidget from '../../components/ChatWidget';
 import { toast } from "react-toastify";
 
 import {
@@ -125,6 +127,9 @@ export default function ProductDetail() {
 
   // 👉 modal yêu cầu đăng nhập
   const [showLoginModal, setShowLoginModal] = useState(false);
+  
+  // Chat với shop
+  const [showChatWithProduct, setShowChatWithProduct] = useState(false);
 
   // Lấy data sản phẩm
   useEffect(() => {
@@ -491,6 +496,15 @@ export default function ProductDetail() {
               </Button>
             </Col>
           </Row>
+          
+          {/* Nút Liên hệ Shop */}
+          <Button
+            variant="outline-primary"
+            className="w-100 py-2 rounded-pill mb-3"
+            onClick={() => setShowChatWithProduct(true)}
+          >
+            <FaComments className="me-2" /> Liên hệ Shop về sản phẩm này
+          </Button>
 
           <Card className="border-0">
             <Card.Header className="bg-white fw-bold">
@@ -809,6 +823,18 @@ export default function ProductDetail() {
           </Button>
         </Modal.Footer>
       </Modal>
+      
+      {/* Chat Widget với context sản phẩm */}
+      {showChatWithProduct && (
+        <ChatWidget 
+          productContext={{
+            productId: product.ProductID,
+            productName: product.Name,
+            productImage: currentImage
+          }}
+          autoOpen={true}
+        />
+      )}
     </div>
   );
 }

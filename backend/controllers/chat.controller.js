@@ -176,18 +176,20 @@ exports.sendMessage = async (req, res) => {
     // If not blocked and bot is handling, try to auto-reply
     if (!banned.blocked && conversation.IsBotHandling) {
       const botReply = await getChatbotReply(message);
-      if (botReply) {
-        const botMessage = await db.ChatMessage.create({
-          ConversationID: conversationId,
-          SenderType: 'bot',
-          SenderID: null,
-          Message: botReply
-        });
-        responseMessages.push(botMessage);
-        
-        // Update status to replied
-        await conversation.update({ Status: 'replied' });
-      }
+      
+      // If no matching auto-reply, send a default message suggesting human support
+      const finalReply = botReply || 'Xin lỗi, tôi chưa hiểu câu hỏi của bạn. Bạn có thể nhấn nút "Yêu cầu nhân viên hỗ trợ" bên dưới để được hỗ trợ tốt hơn nhé!';
+      
+      const botMessage = await db.ChatMessage.create({
+        ConversationID: conversationId,
+        SenderType: 'bot',
+        SenderID: null,
+        Message: finalReply
+      });
+      responseMessages.push(botMessage);
+      
+      // Update status to replied
+      await conversation.update({ Status: 'replied' });
     }
     
     res.status(201).json({ 
