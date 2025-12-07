@@ -13,6 +13,7 @@ const { getProfile, updateProfile } = require('../../controllers/profile.control
 const { getUserOrders, getUserOrderDetail, cancelUserOrder } = require('../../controllers/order.controller');
 // Hàm này lấy danh sách yêu thích có phân trang và đầy đủ thông tin sản phẩm.
 const { getPaginatedWishlist } = require('../../controllers/wishlist.controller'); 
+const { getMyReviews } = require('../../controllers/review.controller'); 
 
 // --- Cấu hình Multer cho việc upload avatar ---
 const storage = multer.diskStorage({
@@ -47,5 +48,8 @@ router.put('/orders/:id/cancel', cancelUserOrder);
 
 // --- Wishlist Page Route (thuộc về Profile) ---
 router.get('/wishlist', getPaginatedWishlist);
+
+// --- My Reviews Route (thuộc về Profile) ---
+router.get('/my-reviews', getMyReviews);
 
 module.exports = router;

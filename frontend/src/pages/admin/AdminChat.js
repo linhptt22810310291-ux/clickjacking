@@ -313,6 +313,97 @@ export default function AdminChat() {
     return conv.GuestName || 'Khách vãng lai';
   };
 
+  // Check if message contains product card
+  const isProductMessage = (message) => {
+    return message && (message.includes('[PRODUCT_CARD]') || message.includes('[SẢN PHẨM]'));
+  };
+
+  // Parse and render product card
+  const renderProductCard = (message) => {
+    // New JSON format: [PRODUCT_CARD]{"name":"..","price":"..","image":"..","link":"..","id":..}[/PRODUCT_CARD]
+    const jsonMatch = message.match(/\[PRODUCT_CARD\](\{.*?\})\[\/PRODUCT_CARD\]/s);
+    if (jsonMatch) {
+      try {
+        const product = JSON.parse(jsonMatch[1]);
+        return (
+          <div className="admin-product-card">
+            <div className="d-flex gap-2 p-2 bg-white rounded shadow-sm" style={{ maxWidth: 280 }}>
+              {product.image && (
+                <img 
+                  src={product.image} 
+                  alt={product.name} 
+                  style={{ 
+                    width: 60, 
+                    height: 60, 
+                    objectFit: 'cover', 
+                    borderRadius: 8,
+                    flexShrink: 0
+                  }} 
+                />
+              )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ 
+                  fontWeight: 600, 
+                  fontSize: 13, 
+                  color: '#333',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                }}>
+                  {product.name}
+                </div>
+                <div style={{ color: '#dc3545', fontWeight: 600, fontSize: 14 }}>
+                  {product.price}
+                </div>
+                <a 
+                  href={product.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 12, color: '#007bff' }}
+                >
+                  Xem sản phẩm →
+                </a>
+              </div>
+            </div>
+          </div>
+        );
+      } catch {
+        return <span>{message}</span>;
+      }
+    }
+
+    // Old text format (fallback)
+    const nameMatch = message.match(/\[SẢN PHẨM\]\s*📦\s*(.+?)(?:\n|💰)/s);
+    const priceMatch = message.match(/💰\s*Giá:\s*(.+?)(?:\n|🔗)/s);
+    const linkMatch = message.match(/🔗\s*Xem:\s*(https?:\/\/[^\s\]]+)/);
+    
+    if (nameMatch) {
+      return (
+        <div className="admin-product-card">
+          <div className="p-2 bg-white rounded shadow-sm" style={{ maxWidth: 250 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: '#333' }}>📦 {nameMatch[1].trim()}</div>
+            {priceMatch && <div style={{ color: '#dc3545', fontWeight: 600 }}>💰 {priceMatch[1].trim()}</div>}
+            {linkMatch && (
+              <a href={linkMatch[1]} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>
+                🔗 Xem sản phẩm
+              </a>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return <span>{message}</span>;
+  };
+
+  // Render message content
+  const renderMessageContent = (msg) => {
+    if (msg.IsBlocked) return <em>[Đã lọc]</em>;
+    if (isProductMessage(msg.Message)) return renderProductCard(msg.Message);
+    return msg.Message;
+  };
+
   return (
     <Container fluid className="py-3">
       <h2 className="mb-3"><FaComments className="me-2" />Quản lý Chat</h2>
@@ -435,7 +526,7 @@ export default function AdminChat() {
                                 <span className="ms-auto">{formatTime(msg.CreatedAt)}</span>
                               </div>
                               <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {msg.IsBlocked ? <em>[Đã lọc]</em> : msg.Message}
+                                {renderMessageContent(msg)}
                               </div>
                             </div>
                           ))}

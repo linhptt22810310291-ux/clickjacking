@@ -26,7 +26,8 @@ import {
 
 import {
   fetchUserOrders, fetchOrderDetail, cancelUserOrder,
-  fetchPaginatedWishlist, fetchUserWalletVouchers, resetVoucherStatus
+  fetchPaginatedWishlist, fetchUserWalletVouchers, resetVoucherStatus,
+  fetchMyReviews
 } from '../../redux/profileSlice';
 
 const PLACEHOLDER = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
@@ -59,14 +60,29 @@ export default function Profile() {
   const userStatus = useSelector(selectUserStatus);
   const userError = useSelector(selectUserError);
   const {
-    orders: orderState,           // { data, status, error }
+    orders: orderState,           // { data, total, page, limit, totalPages, counts, status, error }
     wishlist: wishlistState,      // { data: {items,total,page,pageSize}, status, error }
     orderDetail,                  // { data, status, error }
-    userVouchers                  // { data, status, error }
+    userVouchers,                 // { data, status, error }
+    myReviews: myReviewsState     // { data, total, page, limit, totalPages, status, error }
   } = useSelector((state) => state.profile);
 
   const orders = orderState.data || [];
+  const orderCounts = orderState.counts || {};
+  const orderPagination = {
+    total: orderState.total || 0,
+    page: orderState.page || 1,
+    limit: orderState.limit || 10,
+    totalPages: orderState.totalPages || 1
+  };
   const wishlist = wishlistState.data || { items: [], total: 0, page: 1, pageSize: 8 };
+  const myReviews = myReviewsState?.data || [];
+  const myReviewsPagination = {
+    total: myReviewsState?.total || 0,
+    page: myReviewsState?.page || 1,
+    limit: myReviewsState?.limit || 10,
+    totalPages: myReviewsState?.totalPages || 1
+  };
 
   // --- UI state & URL persistence ---
   const LS_KEY_SECTION = 'profile.activeSection';
@@ -96,9 +112,13 @@ export default function Profile() {
   const [orderSearch, setOrderSearch] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [orderPage, setOrderPage] = useState(1);
+  const ORDER_PAGE_SIZE = 5;
 
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewingItem, setReviewingItem] = useState(null);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const REVIEWS_PAGE_SIZE = 5;
 
   // Cache eligibility theo key `${orderId}_${productId}`
   const [reviewEligibilityCache, setReviewEligibilityCache] = useState({});
@@ -126,7 +146,7 @@ export default function Profile() {
   useEffect(() => {
     if (!user?.id) return;
     dispatch(fetchUserProfile());
-    dispatch(fetchUserOrders());
+    dispatch(fetchUserOrders({ status: activeOrderTab, page: 1, limit: ORDER_PAGE_SIZE }));
     dispatch(fetchPaginatedWishlist({ page: 1, pageSize: 8 }));
     dispatch(fetchUserWalletVouchers());
 
@@ -135,6 +155,18 @@ export default function Profile() {
       dispatch(clearUserStatus());
     };
   }, [dispatch, user?.id]);
+
+  // Load orders when tab or page changes
+  useEffect(() => {
+    if (!user?.id) return;
+    dispatch(fetchUserOrders({ status: activeOrderTab, page: orderPage, limit: ORDER_PAGE_SIZE }));
+  }, [dispatch, user?.id, activeOrderTab, orderPage]);
+
+  // Load my reviews when section = 'reviews' or page changes
+  useEffect(() => {
+    if (!user?.id || activeSection !== 'reviews') return;
+    dispatch(fetchMyReviews({ page: reviewsPage, limit: REVIEWS_PAGE_SIZE }));
+  }, [dispatch, user?.id, activeSection, reviewsPage]);
 
   // --- Form thông tin tài khoản ---
   const profileFormik = useFormik({
@@ -421,7 +453,11 @@ export default function Profile() {
         if (showDetailModal && orderDetail.data?.Order?.OrderID === orderId) {
           dispatch(fetchOrderDetail(orderId));
         }
-        if (activeOrderTab === 'Pending') setActiveOrderTab('Cancelled');
+        // Reload orders to get updated counts
+        dispatch(fetchUserOrders({ status: activeOrderTab, page: orderPage, limit: ORDER_PAGE_SIZE }));
+        if (activeOrderTab === 'Pending') {
+          handleOrderTabChange('Cancelled');
+        }
       } else {
         toast.error(result.payload?.message || 'Không thể hủy đơn hàng.');
       }
@@ -463,30 +499,16 @@ export default function Profile() {
     dispatch(fetchPaginatedWishlist({ page, pageSize: 8 }));
   };
 
-  // Đếm đơn theo trạng thái
-  const orderCounts = useMemo(
-    () =>
-      orders.reduce(
-        (acc, o) => {
-          acc[o.Status] = (acc[o.Status] || 0) + 1;
-          return acc;
-        },
-        {
-          PendingPayment: 0,
-          Pending: 0,
-          Confirmed: 0,
-          Shipped: 0,
-          Delivered: 0,
-          Cancelled: 0
-        }
-      ),
-    [orders]
-  );
+  // Handle order tab change - reset page to 1
+  const handleOrderTabChange = (tab) => {
+    setActiveOrderTab(tab);
+    setOrderPage(1);
+  };
 
-  const filteredOrders = useMemo(
-    () => orders.filter((o) => o.Status === activeOrderTab),
-    [orders, activeOrderTab]
-  );
+  // Handle order page change
+  const handleOrderPageChange = (page) => {
+    setOrderPage(page);
+  };
 
   const isActionLoading =
     userStatus === 'loading' ||
@@ -612,6 +634,9 @@ export default function Profile() {
                 <ListGroup.Item className={`sidebar-item ${activeSection === 'wishlist' ? 'active' : ''}`} onClick={() => setActiveSection('wishlist')}>
                   <FaHeart className="me-2" /> Yêu thích ({wishlist.total || 0})
                 </ListGroup.Item>
+                <ListGroup.Item className={`sidebar-item ${activeSection === 'reviews' ? 'active' : ''}`} onClick={() => setActiveSection('reviews')}>
+                  <FaStar className="me-2" /> Đánh giá của tôi ({myReviewsPagination.total || 0})
+                </ListGroup.Item>
                 <ListGroup.Item className={`sidebar-item ${activeSection === 'vouchers' ? 'active' : ''}`} onClick={() => setActiveSection('vouchers')}>
                   <FaTicketAlt className="me-2" /> Ví Voucher
                 </ListGroup.Item>
@@ -718,7 +743,7 @@ export default function Profile() {
                       <div
                         key={tab.key}
                         className={`order-tab ${activeOrderTab === tab.key ? 'active' : ''}`}
-                        onClick={() => setActiveOrderTab(tab.key)}
+                        onClick={() => handleOrderTabChange(tab.key)}
                       >
                         {tab.label}
                         <span className="order-count">({orderCounts[tab.key] || 0})</span>
@@ -728,11 +753,12 @@ export default function Profile() {
 
                   {orderState.status === 'loading' && !isSearching ? (
                     <div className="text-center p-5"><Spinner /></div>
-                  ) : filteredOrders.length === 0 ? (
+                  ) : orders.length === 0 ? (
                     <p className="text-muted mt-3">Không có đơn hàng nào trong mục này.</p>
                   ) : (
+                    <>
                     <ListGroup variant="flush">
-                      {filteredOrders.map((order) => (
+                      {orders.map((order) => (
                         <ListGroup.Item key={order.OrderID} className="order-item">
                           <div className="d-flex align-items-start gap-3">
                             <div>
@@ -798,6 +824,53 @@ export default function Profile() {
                         </ListGroup.Item>
                       ))}
                     </ListGroup>
+                    
+                    {/* Pagination for Orders */}
+                    {orderPagination.totalPages > 1 && (
+                      <div className="d-flex justify-content-center mt-3">
+                        <Pagination>
+                          <Pagination.First 
+                            onClick={() => handleOrderPageChange(1)} 
+                            disabled={orderPage === 1}
+                          />
+                          <Pagination.Prev 
+                            onClick={() => handleOrderPageChange(orderPage - 1)} 
+                            disabled={orderPage === 1}
+                          />
+                          {[...Array(orderPagination.totalPages).keys()].map(i => {
+                            const pageNum = i + 1;
+                            // Show limited pages
+                            if (
+                              pageNum === 1 ||
+                              pageNum === orderPagination.totalPages ||
+                              (pageNum >= orderPage - 1 && pageNum <= orderPage + 1)
+                            ) {
+                              return (
+                                <Pagination.Item
+                                  key={pageNum}
+                                  active={pageNum === orderPage}
+                                  onClick={() => handleOrderPageChange(pageNum)}
+                                >
+                                  {pageNum}
+                                </Pagination.Item>
+                              );
+                            } else if (pageNum === orderPage - 2 || pageNum === orderPage + 2) {
+                              return <Pagination.Ellipsis key={pageNum} disabled />;
+                            }
+                            return null;
+                          })}
+                          <Pagination.Next 
+                            onClick={() => handleOrderPageChange(orderPage + 1)} 
+                            disabled={orderPage === orderPagination.totalPages}
+                          />
+                          <Pagination.Last 
+                            onClick={() => handleOrderPageChange(orderPagination.totalPages)} 
+                            disabled={orderPage === orderPagination.totalPages}
+                          />
+                        </Pagination>
+                      </div>
+                    )}
+                    </>
                   )}
                 </>
               )}
@@ -894,6 +967,115 @@ export default function Profile() {
                         })}
                       </Row>
                       {renderWLPagination()}
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Đánh giá của tôi */}
+              {activeSection === 'reviews' && (
+                <>
+                  <h4>Đánh giá của tôi ({myReviewsPagination.total || 0})</h4>
+                  {myReviewsState?.status === 'loading' ? (
+                    <div className="text-center p-5"><Spinner /></div>
+                  ) : myReviews.length === 0 ? (
+                    <p className="text-muted">Bạn chưa có đánh giá nào. Hãy mua hàng và đánh giá sản phẩm!</p>
+                  ) : (
+                    <>
+                      <ListGroup variant="flush">
+                        {myReviews.map((review) => {
+                          const productImg = review.product?.DefaultImage || PLACEHOLDER;
+                          return (
+                            <ListGroup.Item key={review.ReviewID} className="py-3">
+                              <div className="d-flex gap-3">
+                                <Link to={`/product/${review.ProductID}`}>
+                                  <Image
+                                    src={productImg}
+                                    alt={review.product?.Name}
+                                    style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }}
+                                    onError={(e) => { e.currentTarget.src = PLACEHOLDER; }}
+                                  />
+                                </Link>
+                                <div className="flex-grow-1">
+                                  <Link to={`/product/${review.ProductID}`} className="text-decoration-none">
+                                    <h6 className="mb-1 text-dark">{review.product?.Name || 'Sản phẩm'}</h6>
+                                  </Link>
+                                  {(review.Size || review.Color) && (
+                                    <small className="text-muted d-block mb-1">
+                                      {review.Size && `Size: ${review.Size}`}
+                                      {review.Size && review.Color && ' | '}
+                                      {review.Color && `Màu: ${review.Color}`}
+                                    </small>
+                                  )}
+                                  <div className="mb-1">
+                                    {[...Array(5)].map((_, i) => (
+                                      <FaStar
+                                        key={i}
+                                        className={i < review.Rating ? 'text-warning' : 'text-muted'}
+                                        style={{ fontSize: 14 }}
+                                      />
+                                    ))}
+                                    <small className="text-muted ms-2">
+                                      {new Date(review.CreatedAt).toLocaleDateString('vi-VN')}
+                                    </small>
+                                  </div>
+                                  {review.Comment && (
+                                    <p className="mb-1 small">{review.Comment}</p>
+                                  )}
+                                  {review.media?.length > 0 && (
+                                    <div className="d-flex gap-2 flex-wrap mt-2">
+                                      {review.media.map((m, idx) => (
+                                        m.IsVideo ? (
+                                          <video
+                                            key={idx}
+                                            src={m.MediaURL}
+                                            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
+                                            controls
+                                          />
+                                        ) : (
+                                          <Image
+                                            key={idx}
+                                            src={m.MediaURL}
+                                            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
+                                          />
+                                        )
+                                      ))}
+                                    </div>
+                                  )}
+                                  <small className="text-muted d-block mt-1">
+                                    Đơn hàng: #{review.OrderID}
+                                  </small>
+                                </div>
+                              </div>
+                            </ListGroup.Item>
+                          );
+                        })}
+                      </ListGroup>
+
+                      {/* Pagination for Reviews */}
+                      {myReviewsPagination.totalPages > 1 && (
+                        <div className="d-flex justify-content-center mt-3">
+                          <Pagination>
+                            <Pagination.Prev
+                              onClick={() => setReviewsPage(p => Math.max(1, p - 1))}
+                              disabled={reviewsPage === 1}
+                            />
+                            {[...Array(myReviewsPagination.totalPages).keys()].map(i => (
+                              <Pagination.Item
+                                key={i + 1}
+                                active={i + 1 === reviewsPage}
+                                onClick={() => setReviewsPage(i + 1)}
+                              >
+                                {i + 1}
+                              </Pagination.Item>
+                            ))}
+                            <Pagination.Next
+                              onClick={() => setReviewsPage(p => Math.min(myReviewsPagination.totalPages, p + 1))}
+                              disabled={reviewsPage === myReviewsPagination.totalPages}
+                            />
+                          </Pagination>
+                        </div>
+                      )}
                     </>
                   )}
                 </>

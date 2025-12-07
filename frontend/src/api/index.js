@@ -116,6 +116,9 @@ export const cancelOrderAPI = (orderId) =>
 export const getPaginatedWishlistAPI = (params) =>
     api.get('/profile/wishlist', { params });
 
+export const getMyReviewsAPI = (params) =>
+    api.get('/profile/my-reviews', { params });
+
 // --- Guest Orders ---
 export const lookupGuestOrdersAPI = (credentials) =>
     api.post('/guest-history/lookup', credentials);

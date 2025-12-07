@@ -40,6 +40,84 @@ const uploadReviewMedia = async (file) => {
 // ===           CONTROLLERS CHO USER (PUBLIC)         ===
 // =======================================================
 
+/**
+ * @route   GET /api/user/my-reviews
+ * @desc    Lấy danh sách đánh giá của user hiện tại
+ * @access  Private
+ */
+exports.getMyReviews = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const page = Math.max(1, parseInt(req.query.page || '1', 10));
+        const limit = Math.max(1, parseInt(req.query.limit || '10', 10));
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await db.Review.findAndCountAll({
+            where: { UserID: userId },
+            include: [
+                {
+                    model: db.Product,
+                    as: 'product',
+                    attributes: ['ProductID', 'Name', 'DefaultImage']
+                },
+                {
+                    model: db.ReviewMedia,
+                    as: 'media',
+                    attributes: ['MediaURL', 'IsVideo']
+                },
+                {
+                    model: db.Order,
+                    as: 'order',
+                    attributes: ['OrderID', 'OrderDate']
+                },
+                {
+                    model: db.OrderItem,
+                    as: 'orderItem',
+                    attributes: ['OrderItemID'],
+                    include: [{
+                        model: db.ProductVariant,
+                        as: 'variant',
+                        attributes: ['Size', 'Color']
+                    }]
+                }
+            ],
+            limit,
+            offset,
+            order: [['CreatedAt', 'DESC']],
+            distinct: true
+        });
+
+        const processedReviews = rows.map(review => {
+            const plainReview = review.get({ plain: true });
+            if (plainReview.product?.DefaultImage && !plainReview.product.DefaultImage.startsWith('http')) {
+                plainReview.product.DefaultImage = `${BASE_URL}${plainReview.product.DefaultImage}`;
+            }
+            if (plainReview.media) {
+                plainReview.media = plainReview.media.map(m => ({
+                    ...m,
+                    MediaURL: m.MediaURL.startsWith('http') ? m.MediaURL : `${BASE_URL}${m.MediaURL}`
+                }));
+            }
+            if (plainReview.orderItem?.variant) {
+                plainReview.Size = plainReview.orderItem.variant.Size;
+                plainReview.Color = plainReview.orderItem.variant.Color;
+            }
+            return plainReview;
+        });
+
+        res.json({
+            reviews: processedReviews,
+            total: count,
+            page,
+            limit,
+            totalPages: Math.ceil(count / limit)
+        });
+    } catch (error) {
+        console.error('GET MY REVIEWS ERROR:', error);
+        res.status(500).json({ errors: [{ msg: 'Lỗi máy chủ' }] });
+    }
+};
+
 exports.getProductReviews = async (req, res) => {
     try {
         const productId = req.params.productId;

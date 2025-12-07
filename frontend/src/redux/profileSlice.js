@@ -63,10 +63,34 @@ export const fetchPaginatedWishlist = createAsyncThunk(
     }
 );
 
+export const fetchMyReviews = createAsyncThunk(
+    'profile/fetchMyReviews',
+    async (params, { rejectWithValue }) => {
+        try {
+            const response = await api.getMyReviewsAPI(params);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response.data);
+        }
+    }
+);
+
 // === INITIAL STATE ===
 const initialState = {
     orders: {
         data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+        counts: {
+            PendingPayment: 0,
+            Pending: 0,
+            Confirmed: 0,
+            Shipped: 0,
+            Delivered: 0,
+            Cancelled: 0
+        },
         status: 'idle',
         error: null
     },
@@ -82,6 +106,15 @@ const initialState = {
     },
     userVouchers: {
         data: [],
+        status: 'idle',
+        error: null
+    },
+    myReviews: {
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
         status: 'idle',
         error: null
     }
@@ -106,7 +139,14 @@ const profileSlice = createSlice({
             })
             .addCase(fetchUserOrders.fulfilled, (state, action) => {
                 state.orders.status = 'succeeded';
-                state.orders.data = action.payload;
+                state.orders.data = action.payload.orders || action.payload;
+                state.orders.total = action.payload.total || 0;
+                state.orders.page = action.payload.page || 1;
+                state.orders.limit = action.payload.limit || 10;
+                state.orders.totalPages = action.payload.totalPages || 1;
+                if (action.payload.counts) {
+                    state.orders.counts = action.payload.counts;
+                }
             })
             .addCase(fetchUserOrders.rejected, (state, action) => {
                 state.orders.status = 'failed';
@@ -128,14 +168,20 @@ const profileSlice = createSlice({
 
             // Cancel Order
             .addCase(cancelUserOrder.fulfilled, (state, action) => {
-                const index = state.orders.data.findIndex(
+                const orders = state.orders.data || [];
+                const index = orders.findIndex(
                     (o) => o.OrderID === action.payload.orderId
                 );
                 if (index !== -1) {
-                    state.orders.data[index].Status = 'Cancelled';
+                    orders[index].Status = 'Cancelled';
                 }
                 if (state.orderDetail.data?.Order?.OrderID === action.payload.orderId) {
                     state.orderDetail.data.Order.Status = 'Cancelled';
+                }
+                // Update counts
+                if (state.orders.counts) {
+                    state.orders.counts.Cancelled = (state.orders.counts.Cancelled || 0) + 1;
+                    // Decrease from previous status if possible
                 }
             })
 
@@ -163,6 +209,23 @@ const profileSlice = createSlice({
             .addCase(fetchPaginatedWishlist.rejected, (state, action) => {
                 state.wishlist.status = 'failed';
                 state.wishlist.error = action.payload?.message || 'Lỗi tải danh sách yêu thích.';
+            })
+
+            // My Reviews
+            .addCase(fetchMyReviews.pending, (state) => {
+                state.myReviews.status = 'loading';
+            })
+            .addCase(fetchMyReviews.fulfilled, (state, action) => {
+                state.myReviews.status = 'succeeded';
+                state.myReviews.data = action.payload.reviews || [];
+                state.myReviews.total = action.payload.total || 0;
+                state.myReviews.page = action.payload.page || 1;
+                state.myReviews.limit = action.payload.limit || 10;
+                state.myReviews.totalPages = action.payload.totalPages || 1;
+            })
+            .addCase(fetchMyReviews.rejected, (state, action) => {
+                state.myReviews.status = 'failed';
+                state.myReviews.error = action.payload?.message || 'Lỗi tải đánh giá của bạn.';
             })
 
             // Reset toàn bộ khi logout

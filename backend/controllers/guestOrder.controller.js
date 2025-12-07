@@ -543,7 +543,35 @@ exports.updateGuestOrderStatus = async (req, res) => {
         const order = await db.GuestOrder.findByPk(req.params.id);
         if (!order) return res.status(404).json({ errors: [{ msg: 'Không tìm thấy đơn hàng' }] });
 
-        await order.update({ Status: req.body.Status });
+        const oldStatus = order.Status;
+        const newStatus = req.body.Status;
+
+        // ✅ KHÓA: Đơn đã hủy thì không cho đổi trạng thái nữa
+        if (oldStatus === 'Cancelled') {
+            return res.status(409).json({ errors: [{ msg: 'Đơn đã hủy – không thể thay đổi trạng thái.' }] });
+        }
+
+        // ✅ KHÓA: Đơn đã giao (Delivered) thì không cho đổi trạng thái
+        if (oldStatus === 'Delivered') {
+            return res.status(409).json({ errors: [{ msg: 'Đơn đã giao – không thể thay đổi trạng thái.' }] });
+        }
+
+        // ✅ Validate chuyển trạng thái hợp lệ
+        const validTransitions = {
+            'PendingPayment': ['Pending', 'Cancelled'],
+            'Pending': ['Confirmed', 'Cancelled'],
+            'Confirmed': ['Shipped', 'Cancelled'],
+            'Shipped': ['Delivered']
+        };
+
+        const allowedNextStatuses = validTransitions[oldStatus] || [];
+        if (!allowedNextStatuses.includes(newStatus)) {
+            return res.status(400).json({ 
+                errors: [{ msg: `Không thể chuyển từ "${oldStatus}" sang "${newStatus}". Chỉ có thể chuyển sang: ${allowedNextStatuses.join(', ') || 'không có'}` }] 
+            });
+        }
+
+        await order.update({ Status: newStatus });
         res.json({ message: 'Cập nhật trạng thái thành công' });
     } catch (error) {
         console.error('ADMIN UPDATE GUEST STATUS ERROR:', error);

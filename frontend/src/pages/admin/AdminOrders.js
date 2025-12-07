@@ -115,8 +115,34 @@ export default function AdminOrders() {
             toast.warn('Đơn đã hủy – không thể thay đổi trạng thái.');
             return;
         }
+        if (currentStatus === 'Delivered') {
+            toast.warn('Đơn đã giao – không thể thay đổi trạng thái.');
+            return;
+        }
         dispatch(updateOrderStatus({ type, id, status: newStatus }));
+    };
+
+    // ✅ NEW: Get valid next statuses based on current status
+    const getValidStatuses = (currentStatus) => {
+        const validTransitions = {
+            'PendingPayment': ['PendingPayment', 'Pending', 'Cancelled'],
+            'Pending': ['Pending', 'Confirmed', 'Cancelled'],
+            'Confirmed': ['Confirmed', 'Shipped', 'Cancelled'],
+            'Shipped': ['Shipped', 'Delivered'],
+            'Delivered': ['Delivered'],
+            'Cancelled': ['Cancelled']
         };
+        return validTransitions[currentStatus] || [currentStatus];
+    };
+
+    const statusLabels = {
+        'PendingPayment': 'Chờ thanh toán',
+        'Pending': 'Chờ xác nhận',
+        'Confirmed': 'Đã xác nhận',
+        'Shipped': 'Đang giao',
+        'Delivered': 'Đã giao',
+        'Cancelled': 'Đã hủy'
+    };
 
 
     const handlePrintPDF = () => {
@@ -287,15 +313,13 @@ export default function AdminOrders() {
                                    <Form.Select
                                         size="sm"
                                         value={o.Status}
-                                        disabled={o.Status === 'Cancelled'}   // ✅ Khóa select nếu đã hủy
+                                        disabled={o.Status === 'Cancelled' || o.Status === 'Delivered'}
                                         onChange={(e) => handleStatusChange(type, id, e.target.value, o.Status)}
                                         onClick={(e) => e.stopPropagation()}
                                         >
-                                        <option value="Pending">Pending</option>
-                                        <option value="Confirmed">Confirmed</option>
-                                        <option value="Shipped">Shipped</option>
-                                        <option value="Delivered">Delivered</option>
-                                        <option value="Cancelled">Cancelled</option>
+                                        {getValidStatuses(o.Status).map(status => (
+                                            <option key={status} value={status}>{statusLabels[status] || status}</option>
+                                        ))}
                                         </Form.Select>
 
                                 </td>

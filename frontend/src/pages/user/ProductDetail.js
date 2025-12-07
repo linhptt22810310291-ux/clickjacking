@@ -830,7 +830,8 @@ export default function ProductDetail() {
           productContext={{
             productId: product.ProductID,
             productName: product.Name,
-            productImage: currentImage
+            productImage: currentImage,
+            productPrice: price
           }}
           autoOpen={true}
         />

@@ -203,9 +203,17 @@ exports.retryVnpayPayment = async (req, res) => {
 exports.getUserOrders = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { q } = req.query;
+    const { q, status, page = 1, limit = 10 } = req.query;
+    const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const limitNum = parseInt(limit, 10);
 
     const whereClause = { UserID: userId };
+    
+    // Filter by status if provided
+    if (status && status !== 'all') {
+      whereClause.Status = status;
+    }
+    
     if (q) {
       whereClause[Op.or] = [
         { OrderID: { [Op.like]: `%${q}%` } },
@@ -291,6 +299,18 @@ exports.getUserOrders = async (req, res) => {
       )`;
     }
 
+    // Get total count for pagination
+    const totalCount = await db.Order.count({
+      where: whereClause,
+      include: [
+        {
+          model: db.Address,
+          as: 'shippingAddress',
+          attributes: []
+        }
+      ]
+    });
+
     const orders = await db.Order.findAll({
       where: whereClause,
       attributes: [
@@ -316,6 +336,8 @@ exports.getUserOrders = async (req, res) => {
         }
       ],
       order: [['OrderDate', 'DESC']],
+      limit: limitNum,
+      offset: offset,
       raw: true
     });
 
@@ -324,7 +346,39 @@ exports.getUserOrders = async (req, res) => {
       FirstItemImage: o.FirstItemImage || null
     }));
 
-    return res.json(processed);
+    // Also get counts by status for tabs
+    const statusCounts = await db.Order.findAll({
+      where: { UserID: userId },
+      attributes: [
+        'Status',
+        [Sequelize.fn('COUNT', Sequelize.col('OrderID')), 'count']
+      ],
+      group: ['Status'],
+      raw: true
+    });
+
+    const counts = {
+      PendingPayment: 0,
+      Pending: 0,
+      Confirmed: 0,
+      Shipped: 0,
+      Delivered: 0,
+      Cancelled: 0
+    };
+    statusCounts.forEach(sc => {
+      if (counts.hasOwnProperty(sc.Status)) {
+        counts[sc.Status] = parseInt(sc.count, 10);
+      }
+    });
+
+    return res.json({
+      orders: processed,
+      total: totalCount,
+      page: parseInt(page, 10),
+      limit: limitNum,
+      totalPages: Math.ceil(totalCount / limitNum),
+      counts
+    });
   } catch (error) {
     console.error('GET user orders error:', error);
     return res.status(500).json({ message: 'Lỗi khi tải danh sách đơn hàng.' });
@@ -669,10 +723,32 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(409).json({ errors: [{ msg: 'Đơn đã hủy – không thể thay đổi trạng thái.' }] });
     }
 
+    // ✅ KHÓA: Đơn đã giao (Delivered) thì không cho đổi trạng thái
+    if (order.Status === 'Delivered') {
+      await t.rollback();
+      return res.status(409).json({ errors: [{ msg: 'Đơn đã giao – không thể thay đổi trạng thái.' }] });
+    }
+
     const oldStatus = order.Status;
     const newStatus = req.body.Status;
 
-    // (không bắt buộc) Có thể thêm validate chuyển trạng thái hợp lệ ở đây
+    // ✅ Validate chuyển trạng thái hợp lệ
+    // Flow: PendingPayment -> Pending -> Confirmed -> Shipped -> Delivered
+    // Cancelled có thể từ: PendingPayment, Pending, Confirmed
+    const validTransitions = {
+      'PendingPayment': ['Pending', 'Cancelled'],
+      'Pending': ['Confirmed', 'Cancelled'],
+      'Confirmed': ['Shipped', 'Cancelled'],
+      'Shipped': ['Delivered']
+    };
+
+    const allowedNextStatuses = validTransitions[oldStatus] || [];
+    if (!allowedNextStatuses.includes(newStatus)) {
+      await t.rollback();
+      return res.status(400).json({ 
+        errors: [{ msg: `Không thể chuyển từ "${oldStatus}" sang "${newStatus}". Chỉ có thể chuyển sang: ${allowedNextStatuses.join(', ') || 'không có'}` }] 
+      });
+    }
 
     order.Status = newStatus;
     await order.save({ transaction: t });

@@ -130,9 +130,13 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
       // Auto send product message if productContext exists and hasn't been sent
       if (productContext?.productId && !productSent) {
         setProductSent(true);
-        // Send product info after a short delay
+        // Send product info after a short delay with image
         setTimeout(() => {
-          const productMessage = `📦 Tôi muốn hỏi về sản phẩm này:\n\n🏷️ ${productContext.productName}\n🔗 ${window.location.href}`;
+          const productImage = productContext.productImage || '';
+          const productPrice = productContext.productPrice ? Number(productContext.productPrice).toLocaleString('vi-VN') + '₫' : '';
+          const productMessage = `[PRODUCT_CARD]
+{"name":"${productContext.productName || ''}","price":"${productPrice}","image":"${productImage}","link":"${window.location.href}","id":${productContext.productId}}
+[/PRODUCT_CARD]`;
           sendChatMessageAPI(data.conversation.ConversationID, { 
             message: productMessage,
             guestSessionId: user ? undefined : getGuestSessionId()
@@ -238,9 +242,13 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
     }
   };
 
-  // Send product info to chat
+  // Send product info to chat with image
   const handleSendProduct = (product) => {
-    const productMessage = `📦 Tôi muốn hỏi về sản phẩm:\n🏷️ ${product.Name}\n💰 Giá: ${Number(product.DiscountedPrice || product.Price).toLocaleString('vi-VN')}₫\n🔗 Link: ${window.location.origin}/product/${product.ProductID}`;
+    const productImage = resolveImageUrl(product.DefaultImage);
+    const productPrice = Number(product.DiscountedPrice || product.Price).toLocaleString('vi-VN') + '₫';
+    const productMessage = `[PRODUCT_CARD]
+{"name":"${product.Name}","price":"${productPrice}","image":"${productImage}","link":"${window.location.origin}/product/${product.ProductID}","id":${product.ProductID}}
+[/PRODUCT_CARD]`;
     
     setShowProductSelector(false);
     setSelectedProduct(null);
@@ -304,11 +312,41 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
 
   // Check if message is a product card
   const isProductMessage = (message) => {
-    return message.includes('📦 Tôi muốn hỏi về sản phẩm:');
+    return message.includes('[PRODUCT_CARD]') || message.includes('📦 Tôi muốn hỏi về sản phẩm');
   };
 
-  // Render product card in message
+  // Parse and render product card in message
   const renderProductCard = (message) => {
+    // New format with JSON
+    if (message.includes('[PRODUCT_CARD]')) {
+      try {
+        const jsonMatch = message.match(/\[PRODUCT_CARD\]\s*({.*?})\s*\[\/PRODUCT_CARD\]/s);
+        if (jsonMatch) {
+          const product = JSON.parse(jsonMatch[1]);
+          return (
+            <div className="chat-product-card-inline">
+              <img 
+                src={product.image || 'https://placehold.co/80x80/e2e8f0/64748b?text=No+Image'} 
+                alt={product.name}
+                className="chat-product-card-image"
+                onError={(e) => { e.target.src = 'https://placehold.co/80x80/e2e8f0/64748b?text=No+Image'; }}
+              />
+              <div className="chat-product-card-info">
+                <div className="chat-product-card-name">{product.name}</div>
+                <div className="chat-product-card-price">{product.price}</div>
+                <a href={product.link} target="_blank" rel="noopener noreferrer" className="chat-product-card-link">
+                  Xem sản phẩm →
+                </a>
+              </div>
+            </div>
+          );
+        }
+      } catch (e) {
+        console.error('Parse product card error:', e);
+      }
+    }
+    
+    // Old format fallback
     const lines = message.split('\n').filter(l => l.trim());
     const name = lines.find(l => l.includes('🏷️'))?.replace('🏷️ ', '') || '';
     const price = lines.find(l => l.includes('💰'))?.replace('💰 Giá: ', '') || '';
