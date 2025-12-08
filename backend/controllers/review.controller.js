@@ -632,6 +632,19 @@ exports.getAllReviewsAdmin = async (req, res) => {
                 // SỬA: Thêm 'required: true' để đảm bảo JOIN hoạt động cho Op.or + thêm thông tin Role, IsEmailVerified
                 { model: db.User, as: 'user', attributes: ['UserID', 'FullName', 'Email', 'AvatarURL', 'Role', 'IsEmailVerified'], required: true },
                 { model: db.Product, as: 'product', attributes: ['ProductID', 'Name'], required: true },
+                // Thêm OrderItem để lấy Size/Color
+                { 
+                    model: db.OrderItem, 
+                    as: 'orderItem', 
+                    attributes: ['OrderItemID'],
+                    required: false,
+                    include: [{
+                        model: db.ProductVariant,
+                        as: 'variant',
+                        attributes: ['Size', 'Color'],
+                        required: false
+                    }]
+                },
                 // Media là tùy chọn, không cần required
                 { model: db.ReviewMedia, as: 'media', attributes: ['MediaURL', 'IsVideo'], required: false }
             ],
@@ -694,6 +707,19 @@ exports.getReviewByIdAdmin = async (req, res) => {
             include: [
                 { model: db.User, as: 'user', attributes: ['UserID', 'FullName', 'Email', 'AvatarURL', 'Role', 'IsEmailVerified'] },
                 { model: db.Product, as: 'product', attributes: ['ProductID', 'Name'] },
+                // Thêm OrderItem để lấy Size/Color
+                { 
+                    model: db.OrderItem, 
+                    as: 'orderItem', 
+                    attributes: ['OrderItemID'],
+                    required: false,
+                    include: [{
+                        model: db.ProductVariant,
+                        as: 'variant',
+                        attributes: ['Size', 'Color'],
+                        required: false
+                    }]
+                },
                 { model: db.ReviewMedia, as: 'media', attributes: ['MediaURL', 'IsVideo'] }
             ]
         });

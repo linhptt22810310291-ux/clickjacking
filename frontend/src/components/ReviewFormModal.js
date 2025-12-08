@@ -12,12 +12,12 @@ function ReviewFormModal({ show, onHide, item, onReviewSubmitted }) {
   const [isLoading, setIsLoading] = useState(false);
 
   // ---- IDs & tên sản phẩm
-  const productId = item?.variant?.product?.ProductID || item?.ProductID;
-  const productName = item?.ProductName || '';
+  const productId = item?.productId || item?.variant?.product?.ProductID || item?.ProductID;
+  const productName = item?.productName || item?.ProductName || item?.variant?.product?.Name || '';
 
   // OrderID và OrderItemID được truyền kèm từ Profile.jsx (đánh giá theo đơn)
-  const orderId = item?.orderId;
-  const orderItemId = item?.OrderItemID || item?.orderItemId; // ✅ NEW: Get OrderItemID for Size/Color tracking
+  const orderId = item?.orderId || item?.OrderID;
+  const orderItemId = item?.orderItemId || item?.OrderItemID; // ✅ NEW: Get OrderItemID for Size/Color tracking
 
   // ---- Chuẩn hóa ảnh + chọn đúng ảnh theo biến thể
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
@@ -26,6 +26,9 @@ function ReviewFormModal({ show, onHide, item, onReviewSubmitted }) {
 
   // Ưu tiên ảnh của biến thể; sau đó đến ảnh mặc định của item/product
   const previewImage = (() => {
+    // Ưu tiên productImage từ pending reviews
+    if (item?.productImage) return norm(item.productImage);
+    
     const v = item?.variant || {};
     if (v.ImageURL) return norm(v.ImageURL);
     if (v.VariantImageURL) return norm(v.VariantImageURL);
@@ -109,8 +112,8 @@ function ReviewFormModal({ show, onHide, item, onReviewSubmitted }) {
             <div>
               <div>
                 <strong>Phân loại:</strong>{' '}
-                {item?.Size ? `Size ${item.Size}` : '—'}
-                {item?.Color ? (item?.Size ? ' - ' : '') + `Màu ${item.Color}` : ''}
+                {(item?.size || item?.Size) ? `Size ${item?.size || item?.Size}` : '—'}
+                {(item?.color || item?.Color) ? ((item?.size || item?.Size) ? ' - ' : '') + `Màu ${item?.color || item?.Color}` : ''}
               </div>
             </div>
           </div>

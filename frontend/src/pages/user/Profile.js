@@ -121,14 +121,14 @@ export default function Profile() {
   const [isSearching, setIsSearching] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [orderPage, setOrderPage] = useState(1);
-  const ORDER_PAGE_SIZE = 5;
+  const ORDER_PAGE_SIZE = 3; // ✅ 3 đơn hàng/trang
 
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewingItem, setReviewingItem] = useState(null);
   const [reviewsPage, setReviewsPage] = useState(1);
   const [pendingReviewsPage, setPendingReviewsPage] = useState(1);
   const [activeReviewTab, setActiveReviewTab] = useState('pending'); // 'pending' or 'reviewed'
-  const REVIEWS_PAGE_SIZE = 5;
+  const REVIEWS_PAGE_SIZE = 4; // ✅ 4 sản phẩm/trang cho reviews
 
   // Cache eligibility theo key `${orderId}_${productId}`
   const [reviewEligibilityCache, setReviewEligibilityCache] = useState({});

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Table, Button, Modal, Spinner, Alert, Container, Pagination, InputGroup, Form, Row, Col, Image, Badge } from 'react-bootstrap';
+import { Table, Button, Modal, Spinner, Alert, Container, Pagination, InputGroup, Form, Row, Col, Image } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { FaStar, FaCheckCircle, FaUserShield, FaCrown, FaUser } from 'react-icons/fa';
+import { FaStar } from 'react-icons/fa';
 
 import { 
     fetchAdminReviews, 
@@ -26,30 +26,6 @@ const resolveMediaUrl = (url) => {
 const renderStars = (rating) => (
     <div className="d-flex">{[...Array(5)].map((_, i) => <FaStar key={i} size={16} className={i < rating ? 'text-warning' : 'text-muted'} />)}</div>
 );
-
-// Hàm xác định loại user dựa trên số lượng đánh giá/đơn hàng
-const getUserBadge = (user) => {
-    const reviewCount = user?.reviewCount || 0;
-    const orderCount = user?.orderCount || 0;
-    const isVerified = user?.IsEmailVerified;
-    
-    if (user?.Role === 'admin') {
-        return <Badge bg="danger" className="ms-1"><FaUserShield className="me-1" />Admin</Badge>;
-    }
-    
-    // VIP: đã mua nhiều sản phẩm
-    if (orderCount >= 10 || reviewCount >= 20) {
-        return <Badge bg="warning" text="dark" className="ms-1"><FaCrown className="me-1" />VIP</Badge>;
-    }
-    
-    // Đã xác thực email
-    if (isVerified) {
-        return <Badge bg="success" className="ms-1"><FaCheckCircle className="me-1" />Đã xác thực</Badge>;
-    }
-    
-    // User thường
-    return <Badge bg="secondary" className="ms-1"><FaUser className="me-1" />Thành viên</Badge>;
-};
 
 export default function AdminReviews() {
     const dispatch = useDispatch();
@@ -138,9 +114,15 @@ export default function AdminReviews() {
             
             {status === 'loading' ? <div className="text-center p-5"><Spinner /></div> : (
                 <Table striped bordered hover responsive>
-                    <thead><tr><th>ID</th><th style={{width: '250px'}}>User</th><th>Sản phẩm</th><th>Điểm</th><th>Bình luận</th><th>Ngày tạo</th><th>Hành động</th></tr></thead>
+                    <thead><tr><th>ID</th><th style={{width: '250px'}}>User</th><th>Sản phẩm</th><th>Phân loại</th><th>Điểm</th><th>Bình luận</th><th>Ngày tạo</th><th>Hành động</th></tr></thead>
                     <tbody>
-                        {reviews.map(r => (
+                        {reviews.map(r => {
+                            const variant = r.orderItem?.variant;
+                            const sizeColor = variant ? 
+                                `${variant.Size ? `Size: ${variant.Size}` : ''}${variant.Size && variant.Color ? ' | ' : ''}${variant.Color ? `Màu: ${variant.Color}` : ''}` 
+                                : '—';
+                            
+                            return (
                             <tr key={r.ReviewID}>
                                 <td>{r.ReviewID}</td>
                                 <td>
@@ -155,11 +137,11 @@ export default function AdminReviews() {
                                         <div>
                                             <div className="fw-semibold">{r.user?.FullName || 'N/A'}</div>
                                             <small className="text-muted">{r.user?.Email}</small>
-                                            <div>{getUserBadge(r.user)}</div>
                                         </div>
                                     </div>
                                 </td>
                                 <td>{r.product?.Name || 'N/A'}</td>
+                                <td><small className="text-muted">{sizeColor}</small></td>
                                 <td>{renderStars(r.Rating)}</td>
                                 <td title={r.Comment} className="text-truncate" style={{maxWidth: '200px'}}>{r.Comment || '-'}</td>
                                 <td>{new Date(r.CreatedAt).toLocaleDateString('vi-VN')}</td>
@@ -168,7 +150,7 @@ export default function AdminReviews() {
                                     <Button variant="outline-danger" size="sm" onClick={() => handleDelete(r.ReviewID)}>Xóa</Button>
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                     </tbody>
                 </Table>
             )}
@@ -191,9 +173,13 @@ export default function AdminReviews() {
                                 <Col md={10}>
                                     <p>
                                         <strong>User:</strong> {currentReview.user?.FullName} ({currentReview.user?.Email})
-                                        {getUserBadge(currentReview.user)}
                                     </p>
                                     <p><strong>Sản phẩm:</strong> {currentReview.product?.Name}</p>
+                                    <p><strong>Phân loại:</strong> {
+                                        currentReview.orderItem?.variant ? 
+                                            `${currentReview.orderItem.variant.Size ? `Size: ${currentReview.orderItem.variant.Size}` : ''}${currentReview.orderItem.variant.Size && currentReview.orderItem.variant.Color ? ' | ' : ''}${currentReview.orderItem.variant.Color ? `Màu: ${currentReview.orderItem.variant.Color}` : ''}` 
+                                            : '—'
+                                    }</p>
                                     <div><strong>Điểm:</strong> {renderStars(currentReview.Rating)}</div>
                                     <p><strong>Ngày tạo:</strong> {new Date(currentReview.CreatedAt).toLocaleString('vi-VN')}</p>
                                 </Col>
