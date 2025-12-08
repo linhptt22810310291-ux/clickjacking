@@ -300,16 +300,24 @@ exports.getUserOrders = async (req, res) => {
     }
 
     // Get total count for pagination
-    const totalCount = await db.Order.count({
-      where: whereClause,
-      include: [
-        {
-          model: db.Address,
-          as: 'shippingAddress',
-          attributes: []
-        }
-      ]
-    });
+    let totalCount;
+    try {
+      totalCount = await db.Order.count({
+        where: whereClause,
+        include: q ? [
+          {
+            model: db.Address,
+            as: 'shippingAddress',
+            attributes: [],
+            required: false
+          }
+        ] : [],
+        distinct: true
+      });
+    } catch (countError) {
+      console.error('Count error:', countError);
+      totalCount = 0;
+    }
 
     const orders = await db.Order.findAll({
       where: whereClause,
@@ -567,15 +575,23 @@ exports.cancelUserOrder = async (req, res) => {
 
     // 2. Hoàn lại tồn kho theo từng OrderItem (VariantID)
     for (const item of order.items) {
-      if (!item.VariantID || !item.Quantity) continue;
+      if (!item.VariantID || !item.Quantity) {
+        console.warn(`Skipping item without VariantID: OrderItemID=${item.OrderItemID}`);
+        continue;
+      }
 
-      await db.ProductVariant.increment(
-        { StockQuantity: item.Quantity },
-        {
-          where: { VariantID: item.VariantID },
-          transaction: t
-        }
-      );
+      try {
+        await db.ProductVariant.increment(
+          { StockQuantity: item.Quantity },
+          {
+            where: { VariantID: item.VariantID },
+            transaction: t
+          }
+        );
+      } catch (variantError) {
+        console.error(`Error restoring stock for VariantID=${item.VariantID}:`, variantError);
+        // Continue with other items even if one fails
+      }
     }
 
     await t.commit();
@@ -584,8 +600,9 @@ exports.cancelUserOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Order cancel PUT error:', error);
+    console.error('Error details:', error.message, error.stack);
     await t.rollback();
-    return res.status(500).json({ message: 'Lỗi máy chủ.' });
+    return res.status(500).json({ message: 'Lỗi máy chủ: ' + error.message });
   }
 };
 
