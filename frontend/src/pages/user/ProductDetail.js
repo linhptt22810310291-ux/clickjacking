@@ -330,23 +330,6 @@ export default function ProductDetail() {
       ...reviewFilter
     }));
   };
-  const handleReviewFilterChange = (filterType, value) => {
-    const newFilter = { ...reviewFilter };
-    if (filterType === 'rating') {
-      newFilter.rating = newFilter.rating === value ? null : value;
-    } else if (filterType === 'hasMedia') {
-      newFilter.hasMedia = !newFilter.hasMedia;
-    } else if (filterType === 'sortBy') {
-      newFilter.sortBy = value;
-    }
-    setReviewFilter(newFilter);
-    // Fetch with new filter, reset to page 1
-    dispatch(fetchProductReviewsPage({ 
-      productId: id, 
-      page: 1,
-      ...newFilter
-    }));
-  };
 
   if (status === "loading") {
     return (

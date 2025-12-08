@@ -92,13 +92,7 @@ exports.sendOtpEmail = async (to, otp) => {
         console.log(`✅ [OTP Email] Sent successfully to ${to}`);
     } catch (error) {
         console.error(`❌ [OTP Email] Error sending to ${to}:`, error.message);
-        throw error; // Ném lỗi để controller biết và xử lý
-    }
-};
-        console.log(`OTP email sent successfully to ${to}`);
-    } catch (error) {
-        console.error(`Error sending OTP email to ${to}:`, error);
-        throw new Error('Không thể gửi email OTP.');
+        throw error;
     }
 };
 
