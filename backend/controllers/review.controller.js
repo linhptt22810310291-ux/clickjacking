@@ -629,8 +629,8 @@ exports.getAllReviewsAdmin = async (req, res) => {
         const { count, rows } = await db.Review.findAndCountAll({
             where: whereClause,
             include: [
-                // SỬA: Thêm 'required: true' để đảm bảo JOIN hoạt động cho Op.or
-                { model: db.User, as: 'user', attributes: ['UserID', 'FullName', 'Email', 'AvatarURL'], required: true },
+                // SỬA: Thêm 'required: true' để đảm bảo JOIN hoạt động cho Op.or + thêm thông tin Role, IsEmailVerified
+                { model: db.User, as: 'user', attributes: ['UserID', 'FullName', 'Email', 'AvatarURL', 'Role', 'IsEmailVerified'], required: true },
                 { model: db.Product, as: 'product', attributes: ['ProductID', 'Name'], required: true },
                 // Media là tùy chọn, không cần required
                 { model: db.ReviewMedia, as: 'media', attributes: ['MediaURL', 'IsVideo'], required: false }
@@ -641,17 +641,40 @@ exports.getAllReviewsAdmin = async (req, res) => {
             distinct: true
         });
 
+        // Lấy thêm thống kê reviewCount và orderCount cho mỗi user
+        const userIds = [...new Set(rows.map(r => r.UserID))];
+        const [reviewCounts, orderCounts] = await Promise.all([
+            db.Review.findAll({
+                where: { UserID: { [Op.in]: userIds } },
+                attributes: ['UserID', [Sequelize.fn('COUNT', Sequelize.col('ReviewID')), 'count']],
+                group: ['UserID'],
+                raw: true
+            }),
+            db.Order.findAll({
+                where: { UserID: { [Op.in]: userIds }, Status: 'Delivered' },
+                attributes: ['UserID', [Sequelize.fn('COUNT', Sequelize.col('OrderID')), 'count']],
+                group: ['UserID'],
+                raw: true
+            })
+        ]);
+
+        const reviewCountMap = Object.fromEntries(reviewCounts.map(r => [r.UserID, parseInt(r.count)]));
+        const orderCountMap = Object.fromEntries(orderCounts.map(o => [o.UserID, parseInt(o.count)]));
+
         const processedReviews = rows.map(review => {
             const plainReview = review.get({ plain: true });
-            if (plainReview.user && plainReview.user.AvatarURL) {
-                 if(!plainReview.user.AvatarURL.startsWith('http')) {
+            if (plainReview.user) {
+                 if (plainReview.user.AvatarURL && !plainReview.user.AvatarURL.startsWith('http')) {
                     plainReview.user.AvatarURL = `${BASE_URL}${plainReview.user.AvatarURL}`;
                  }
+                 // Thêm thống kê cho user
+                 plainReview.user.reviewCount = reviewCountMap[plainReview.user.UserID] || 0;
+                 plainReview.user.orderCount = orderCountMap[plainReview.user.UserID] || 0;
             }
             if (plainReview.media) {
                 plainReview.media = plainReview.media.map(m => ({
                     ...m,
-                    MediaURL: `${BASE_URL}${m.MediaURL}`
+                    MediaURL: m.MediaURL.startsWith('http') ? m.MediaURL : `${BASE_URL}${m.MediaURL}`
                 }));
             }
             return plainReview;
@@ -669,7 +692,7 @@ exports.getReviewByIdAdmin = async (req, res) => {
     try {
         const review = await db.Review.findByPk(req.params.id, {
             include: [
-                { model: db.User, as: 'user', attributes: ['UserID', 'FullName', 'Email', 'AvatarURL'] },
+                { model: db.User, as: 'user', attributes: ['UserID', 'FullName', 'Email', 'AvatarURL', 'Role', 'IsEmailVerified'] },
                 { model: db.Product, as: 'product', attributes: ['ProductID', 'Name'] },
                 { model: db.ReviewMedia, as: 'media', attributes: ['MediaURL', 'IsVideo'] }
             ]
@@ -680,15 +703,25 @@ exports.getReviewByIdAdmin = async (req, res) => {
         }
         
         const plainReview = review.get({ plain: true });
-        if (plainReview.user && plainReview.user.AvatarURL) {
-             if(!plainReview.user.AvatarURL.startsWith('http')) {
+        
+        // Lấy thống kê reviewCount và orderCount cho user
+        if (plainReview.user) {
+            const [reviewCount, orderCount] = await Promise.all([
+                db.Review.count({ where: { UserID: plainReview.user.UserID } }),
+                db.Order.count({ where: { UserID: plainReview.user.UserID, Status: 'Delivered' } })
+            ]);
+            plainReview.user.reviewCount = reviewCount;
+            plainReview.user.orderCount = orderCount;
+            
+            if (plainReview.user.AvatarURL && !plainReview.user.AvatarURL.startsWith('http')) {
                 plainReview.user.AvatarURL = `${BASE_URL}${plainReview.user.AvatarURL}`;
-             }
+            }
         }
+        
         if (plainReview.media) {
             plainReview.media = plainReview.media.map(m => ({
                 ...m,
-                MediaURL: `${BASE_URL}${m.MediaURL}`
+                MediaURL: m.MediaURL.startsWith('http') ? m.MediaURL : `${BASE_URL}${m.MediaURL}`
             }));
         }
 

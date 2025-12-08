@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Table, Button, Modal, Spinner, Alert, Container, Pagination, InputGroup, Form, Row, Col, Image } from 'react-bootstrap';
+import { Table, Button, Modal, Spinner, Alert, Container, Pagination, InputGroup, Form, Row, Col, Image, Badge } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { FaStar } from 'react-icons/fa';
+import { FaStar, FaCheckCircle, FaUserShield, FaCrown, FaUser } from 'react-icons/fa';
 
 import { 
     fetchAdminReviews, 
@@ -26,6 +26,30 @@ const resolveMediaUrl = (url) => {
 const renderStars = (rating) => (
     <div className="d-flex">{[...Array(5)].map((_, i) => <FaStar key={i} size={16} className={i < rating ? 'text-warning' : 'text-muted'} />)}</div>
 );
+
+// Hàm xác định loại user dựa trên số lượng đánh giá/đơn hàng
+const getUserBadge = (user) => {
+    const reviewCount = user?.reviewCount || 0;
+    const orderCount = user?.orderCount || 0;
+    const isVerified = user?.IsEmailVerified;
+    
+    if (user?.Role === 'admin') {
+        return <Badge bg="danger" className="ms-1"><FaUserShield className="me-1" />Admin</Badge>;
+    }
+    
+    // VIP: đã mua nhiều sản phẩm
+    if (orderCount >= 10 || reviewCount >= 20) {
+        return <Badge bg="warning" text="dark" className="ms-1"><FaCrown className="me-1" />VIP</Badge>;
+    }
+    
+    // Đã xác thực email
+    if (isVerified) {
+        return <Badge bg="success" className="ms-1"><FaCheckCircle className="me-1" />Đã xác thực</Badge>;
+    }
+    
+    // User thường
+    return <Badge bg="secondary" className="ms-1"><FaUser className="me-1" />Thành viên</Badge>;
+};
 
 export default function AdminReviews() {
     const dispatch = useDispatch();
@@ -114,12 +138,27 @@ export default function AdminReviews() {
             
             {status === 'loading' ? <div className="text-center p-5"><Spinner /></div> : (
                 <Table striped bordered hover responsive>
-                    <thead><tr><th>ID</th><th>User</th><th>Sản phẩm</th><th>Điểm</th><th>Bình luận</th><th>Ngày tạo</th><th>Hành động</th></tr></thead>
+                    <thead><tr><th>ID</th><th style={{width: '250px'}}>User</th><th>Sản phẩm</th><th>Điểm</th><th>Bình luận</th><th>Ngày tạo</th><th>Hành động</th></tr></thead>
                     <tbody>
                         {reviews.map(r => (
                             <tr key={r.ReviewID}>
                                 <td>{r.ReviewID}</td>
-                                <td>{r.user?.FullName || 'N/A'}</td>
+                                <td>
+                                    <div className="d-flex align-items-center gap-2">
+                                        <Image 
+                                            src={resolveMediaUrl(r.user?.AvatarURL)} 
+                                            roundedCircle 
+                                            width={40} 
+                                            height={40} 
+                                            style={{objectFit: 'cover'}}
+                                        />
+                                        <div>
+                                            <div className="fw-semibold">{r.user?.FullName || 'N/A'}</div>
+                                            <small className="text-muted">{r.user?.Email}</small>
+                                            <div>{getUserBadge(r.user)}</div>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td>{r.product?.Name || 'N/A'}</td>
                                 <td>{renderStars(r.Rating)}</td>
                                 <td title={r.Comment} className="text-truncate" style={{maxWidth: '200px'}}>{r.Comment || '-'}</td>
@@ -147,10 +186,13 @@ export default function AdminReviews() {
                         <>
                             <Row>
                                 <Col md={2} className="text-center">
-                                    <Image src={resolveMediaUrl(currentReview.user?.AvatarURL)} roundedCircle width={80} height={80} />
+                                    <Image src={resolveMediaUrl(currentReview.user?.AvatarURL)} roundedCircle width={80} height={80} style={{objectFit: 'cover'}} />
                                 </Col>
                                 <Col md={10}>
-                                    <p><strong>User:</strong> {currentReview.user?.FullName} ({currentReview.user?.Email})</p>
+                                    <p>
+                                        <strong>User:</strong> {currentReview.user?.FullName} ({currentReview.user?.Email})
+                                        {getUserBadge(currentReview.user)}
+                                    </p>
                                     <p><strong>Sản phẩm:</strong> {currentReview.product?.Name}</p>
                                     <div><strong>Điểm:</strong> {renderStars(currentReview.Rating)}</div>
                                     <p><strong>Ngày tạo:</strong> {new Date(currentReview.CreatedAt).toLocaleString('vi-VN')}</p>

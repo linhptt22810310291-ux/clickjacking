@@ -91,11 +91,6 @@ export default function Profile() {
     limit: pendingReviewsState?.limit || 10,
     totalPages: pendingReviewsState?.totalPages || 1
   };
-    total: myReviewsState?.total || 0,
-    page: myReviewsState?.page || 1,
-    limit: myReviewsState?.limit || 10,
-    totalPages: myReviewsState?.totalPages || 1
-  };
 
   // --- UI state & URL persistence ---
   const LS_KEY_SECTION = 'profile.activeSection';
