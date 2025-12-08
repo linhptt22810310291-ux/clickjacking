@@ -544,13 +544,6 @@ export default function AdminChat() {
     return <span>{message}</span>;
   };
 
-  // Render message content
-  const renderMessageContent = (msg) => {
-    if (msg.IsBlocked) return <em>[Đã lọc]</em>;
-    if (isProductMessage(msg.Message)) return renderProductCard(msg.Message);
-    return msg.Message;
-  };
-
   return (
     <Container fluid className="py-3">
       <h2 className="mb-3"><FaComments className="me-2" />Quản lý Chat</h2>
