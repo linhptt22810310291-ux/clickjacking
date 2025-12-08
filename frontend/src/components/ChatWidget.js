@@ -929,12 +929,11 @@ Tôi cần hỗ trợ về đơn hàng này.`;
                 value={productCategory} 
                 onChange={(e) => { setProductCategory(e.target.value); setProductPage(1); }}
               >
-                <option value="">Danh mục</option>
-                <option value="Giày Thể Thao">Thể Thao</option>
-                <option value="Giày Tây">Giày Tây</option>
-                <option value="Giày Sandal">Sandal</option>
-                <option value="Giày Boot">Boot</option>
-                <option value="Giày Lười">Giày Lười</option>
+                <option value="">Tất cả danh mục</option>
+                <option value="sport">Giày thể thao</option>
+                <option value="office">Giày công sở</option>
+                <option value="sandal">Sandal</option>
+                <option value="sneaker">Sneaker</option>
               </Form.Select>
             </div>
             <div className="col-4">
@@ -943,9 +942,9 @@ Tôi cần hỗ trợ về đơn hàng này.`;
                 value={productTargetGroup} 
                 onChange={(e) => { setProductTargetGroup(e.target.value); setProductPage(1); }}
               >
-                <option value="">Đối tượng</option>
-                <option value="Nam">Nam</option>
-                <option value="Nữ">Nữ</option>
+                <option value="">Tất cả</option>
+                <option value="Men">Nam</option>
+                <option value="Women">Nữ</option>
                 <option value="Unisex">Unisex</option>
               </Form.Select>
             </div>
@@ -955,11 +954,11 @@ Tôi cần hỗ trợ về đơn hàng này.`;
                 value={productSort} 
                 onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}
               >
-                <option value="">Sắp xếp</option>
-                <option value="price-asc">Giá ↑</option>
-                <option value="price-desc">Giá ↓</option>
-                <option value="name">A-Z</option>
-                <option value="newest">Mới</option>
+                <option value="">Mặc định</option>
+                <option value="name_asc">Tên A → Z</option>
+                <option value="name_desc">Tên Z → A</option>
+                <option value="price_asc">Giá tăng dần</option>
+                <option value="price_desc">Giá giảm dần</option>
               </Form.Select>
             </div>
           </div>

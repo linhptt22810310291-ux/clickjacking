@@ -922,11 +922,10 @@ export default function AdminChat() {
                 onChange={(e) => { setProductCategory(e.target.value); setProductPage(1); }}
               >
                 <option value="">Tất cả danh mục</option>
-                <option value="Giày Thể Thao">Giày Thể Thao</option>
-                <option value="Giày Tây">Giày Tây</option>
-                <option value="Giày Sandal">Giày Sandal</option>
-                <option value="Giày Boot">Giày Boot</option>
-                <option value="Giày Lười">Giày Lười</option>
+                <option value="sport">Giày thể thao</option>
+                <option value="office">Giày công sở</option>
+                <option value="sandal">Sandal</option>
+                <option value="sneaker">Sneaker</option>
               </Form.Select>
             </Col>
             <Col md={4}>
@@ -936,8 +935,8 @@ export default function AdminChat() {
                 onChange={(e) => { setProductTargetGroup(e.target.value); setProductPage(1); }}
               >
                 <option value="">Tất cả đối tượng</option>
-                <option value="Nam">Nam</option>
-                <option value="Nữ">Nữ</option>
+                <option value="Men">Nam</option>
+                <option value="Women">Nữ</option>
                 <option value="Unisex">Unisex</option>
               </Form.Select>
             </Col>
@@ -948,10 +947,10 @@ export default function AdminChat() {
                 onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}
               >
                 <option value="">Mặc định</option>
-                <option value="price-asc">Giá tăng dần</option>
-                <option value="price-desc">Giá giảm dần</option>
-                <option value="name">Tên A-Z</option>
-                <option value="newest">Mới nhất</option>
+                <option value="name_asc">Tên A → Z</option>
+                <option value="name_desc">Tên Z → A</option>
+                <option value="price_asc">Giá tăng dần</option>
+                <option value="price_desc">Giá giảm dần</option>
               </Form.Select>
             </Col>
           </Row>
