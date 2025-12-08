@@ -52,35 +52,46 @@ exports.getMyReviews = async (req, res) => {
         const limit = Math.max(1, parseInt(req.query.limit || '10', 10));
         const offset = (page - 1) * limit;
 
+        // Build include array - only add ReviewMedia if model exists
+        const includeArray = [
+            {
+                model: db.Product,
+                as: 'product',
+                attributes: ['ProductID', 'Name', 'DefaultImage']
+            },
+            {
+                model: db.Order,
+                as: 'order',
+                attributes: ['OrderID', 'OrderDate'],
+                required: false
+            },
+            {
+                model: db.OrderItem,
+                as: 'orderItem',
+                attributes: ['OrderItemID'],
+                required: false,
+                include: [{
+                    model: db.ProductVariant,
+                    as: 'variant',
+                    attributes: ['Size', 'Color'],
+                    required: false
+                }]
+            }
+        ];
+
+        // Only include ReviewMedia if model exists
+        if (db.ReviewMedia) {
+            includeArray.push({
+                model: db.ReviewMedia,
+                as: 'media',
+                attributes: ['MediaURL', 'IsVideo'],
+                required: false
+            });
+        }
+
         const { count, rows } = await db.Review.findAndCountAll({
             where: { UserID: userId },
-            include: [
-                {
-                    model: db.Product,
-                    as: 'product',
-                    attributes: ['ProductID', 'Name', 'DefaultImage']
-                },
-                {
-                    model: db.ReviewMedia,
-                    as: 'media',
-                    attributes: ['MediaURL', 'IsVideo']
-                },
-                {
-                    model: db.Order,
-                    as: 'order',
-                    attributes: ['OrderID', 'OrderDate']
-                },
-                {
-                    model: db.OrderItem,
-                    as: 'orderItem',
-                    attributes: ['OrderItemID'],
-                    include: [{
-                        model: db.ProductVariant,
-                        as: 'variant',
-                        attributes: ['Size', 'Color']
-                    }]
-                }
-            ],
+            include: includeArray,
             limit,
             offset,
             order: [['CreatedAt', 'DESC']],

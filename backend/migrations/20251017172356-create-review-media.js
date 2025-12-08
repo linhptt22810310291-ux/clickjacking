@@ -7,7 +7,7 @@ module.exports = {
       ReviewID: { type: Sequelize.INTEGER, allowNull: false, references: { model: 'Reviews', key: 'ReviewID' }, onDelete: 'CASCADE' },
       MediaURL: { type: Sequelize.STRING(500), allowNull: false },
       IsVideo: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
-      CreatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn('GETDATE') }
+      CreatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') }
     });
     await queryInterface.addIndex('ReviewMedia', ['ReviewID'], { name: 'IDX_ReviewMedia_ReviewID' });
   },
