@@ -891,7 +891,9 @@ export default function AdminChat() {
         setProductPage(1);
       }} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>Chọn sản phẩm để gửi ({productTotal} sản phẩm)</Modal.Title>
+          <Modal.Title>
+            Chọn sản phẩm để gửi {productTotal > 0 && `(${productTotal} kết quả)`}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {/* Search & Filters */}

@@ -284,10 +284,17 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
   // Send product info to chat with image
   const handleSendProduct = (product) => {
     const productImage = resolveImageUrl(product.DefaultImage);
-    const productPrice = Number(product.DiscountedPrice || product.Price).toLocaleString('vi-VN') + '₫';
-    const productMessage = `[PRODUCT_CARD]
-{"name":"${product.Name}","price":"${productPrice}","image":"${productImage}","link":"${window.location.origin}/product/${product.ProductID}","id":${product.ProductID}}
-[/PRODUCT_CARD]`;
+    const productUrl = `${window.location.origin}/product/${product.ProductID}`;
+    
+    // Use JSON format like admin (consistent format for parsing)
+    const productMessage = JSON.stringify({
+      type: 'product',
+      productId: product.ProductID,
+      productName: product.Name,
+      productPrice: product.DiscountedPrice || product.Price,
+      productImage: productImage,
+      productUrl: productUrl
+    });
     
     setShowProductSelector(false);
     setSelectedProduct(null);
@@ -399,6 +406,12 @@ Tôi cần hỗ trợ về đơn hàng này.`;
 
   // Check if message is a product card
   const isProductMessage = (message) => {
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed.type === 'product') return true;
+    } catch (e) {
+      // Not JSON
+    }
     return message.includes('[PRODUCT_CARD]') || message.includes('📦 Tôi muốn hỏi về sản phẩm');
   };
 
@@ -456,7 +469,35 @@ Tôi cần hỗ trợ về đơn hàng này.`;
 
   // Parse and render product card in message
   const renderProductCard = (message) => {
-    // New format with JSON
+    // Try new JSON format first (from both admin and user)
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed.type === 'product') {
+        return (
+          <div className="chat-product-card-inline">
+            <img 
+              src={parsed.productImage || 'https://placehold.co/80x80/e2e8f0/64748b?text=No+Image'} 
+              alt={parsed.productName}
+              className="chat-product-card-image"
+              onError={(e) => { e.target.src = 'https://placehold.co/80x80/e2e8f0/64748b?text=No+Image'; }}
+            />
+            <div className="chat-product-card-info">
+              <div className="chat-product-card-name">{parsed.productName}</div>
+              <div className="chat-product-card-price">
+                {Number(parsed.productPrice).toLocaleString('vi-VN')}₫
+              </div>
+              <a href={parsed.productUrl} target="_blank" rel="noopener noreferrer" className="chat-product-card-link">
+                Xem sản phẩm →
+              </a>
+            </div>
+          </div>
+        );
+      }
+    } catch (e) {
+      // Not new JSON format, try old format
+    }
+    
+    // Old [PRODUCT_CARD] format (backward compatibility)
     if (message.includes('[PRODUCT_CARD]')) {
       try {
         const jsonMatch = message.match(/\[PRODUCT_CARD\]\s*({.*?})\s*\[\/PRODUCT_CARD\]/s);
@@ -485,17 +526,8 @@ Tôi cần hỗ trợ về đơn hàng này.`;
       }
     }
     
-    // Old format fallback
-    const lines = message.split('\n').filter(l => l.trim());
-    const name = lines.find(l => l.includes('🏷️'))?.replace('🏷️ ', '') || '';
-    const price = lines.find(l => l.includes('💰'))?.replace('💰 Giá: ', '') || '';
-    
-    return (
-      <div className="chat-product-card-msg">
-        <div className="fw-semibold">{name}</div>
-        <div className="text-danger small">{price}</div>
-      </div>
-    );
+    // Fallback for plain text
+    return <span>{message}</span>;
   };
 
   // Check if bot response suggests human support
@@ -874,7 +906,9 @@ Tôi cần hỗ trợ về đơn hàng này.`;
         className="chat-product-selector-modal"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Chọn sản phẩm ({productTotal} sản phẩm)</Modal.Title>
+          <Modal.Title>
+            Chọn sản phẩm {productTotal > 0 && `(${productTotal} kết quả)`}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ maxHeight: '65vh', overflowY: 'auto' }} className="chat-product-selector">
           {/* Search */}
