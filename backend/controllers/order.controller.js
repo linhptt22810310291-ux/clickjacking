@@ -302,18 +302,28 @@ exports.getUserOrders = async (req, res) => {
     // Get total count for pagination
     let totalCount;
     try {
-      totalCount = await db.Order.count({
-        where: whereClause,
-        include: q ? [
-          {
-            model: db.Address,
-            as: 'shippingAddress',
-            attributes: [],
-            required: false
-          }
-        ] : [],
-        distinct: true
-      });
+      if (q) {
+        // For search with join, use findAll and count manually
+        const countResult = await db.Order.findAll({
+          where: whereClause,
+          attributes: ['OrderID'],
+          include: [
+            {
+              model: db.Address,
+              as: 'shippingAddress',
+              attributes: [],
+              required: false
+            }
+          ],
+          raw: true
+        });
+        totalCount = countResult.length;
+      } else {
+        // Simple count without join
+        totalCount = await db.Order.count({
+          where: whereClause
+        });
+      }
     } catch (countError) {
       console.error('Count error:', countError);
       totalCount = 0;
@@ -533,6 +543,7 @@ exports.getUserOrderDetail = async (req, res) => {
 exports.cancelUserOrder = async (req, res) => {
   const t = await db.sequelize.transaction();
   try {
+    // First find order without lock to avoid FOR UPDATE with join issue
     const order = await db.Order.findOne({
       where: {
         OrderID: req.params.id,
@@ -544,8 +555,7 @@ exports.cancelUserOrder = async (req, res) => {
           as: 'items'
         }
       ],
-      transaction: t,
-      lock: t.LOCK.UPDATE
+      transaction: t
     });
 
     if (!order) {
