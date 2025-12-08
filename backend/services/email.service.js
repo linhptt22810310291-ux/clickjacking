@@ -10,6 +10,15 @@ const transporter = nodemailer.createTransport({
         pass: process.env.GMAIL_PASS,
     },
 });
+
+// Verify email connection on startup
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('⚠️ Email Service (GMAIL) verification failed:', error.message);
+    } else {
+        console.log('✅ Email Service (GMAIL) ready - User:', process.env.GMAIL_USER);
+    }
+});
 /**
  * === HÀM MỚI: Gửi email Chào mừng ===
  * Gửi email cho người dùng mới, đính kèm mã voucher để họ tự nhận.

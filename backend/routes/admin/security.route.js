@@ -126,6 +126,73 @@ router.get('/my-ip', (req, res) => {
 });
 
 /**
+ * POST /api/security/test-email
+ * Test gửi email - Admin only
+ */
+router.post('/test-email', authenticateToken, checkAdmin, async (req, res) => {
+  try {
+    const nodemailer = require('nodemailer');
+    const { to } = req.body;
+    const targetEmail = to || process.env.GMAIL_USER;
+
+    // Tạo transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+    });
+
+    // Verify trước khi gửi
+    await transporter.verify();
+
+    // Gửi test email
+    const info = await transporter.sendMail({
+      from: `"Shoe Store Test" <${process.env.GMAIL_USER}>`,
+      to: targetEmail,
+      subject: '✅ Test Email - Shoe Store',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>🎉 Email hoạt động!</h2>
+          <p>Đây là email test từ hệ thống Shoe Store.</p>
+          <p><strong>Thời gian:</strong> ${new Date().toLocaleString('vi-VN')}</p>
+          <p><strong>Server:</strong> ${process.env.BASE_URL || 'localhost'}</p>
+          <hr>
+          <p style="color: #666; font-size: 12px;">Email này được gửi để xác nhận hệ thống email đang hoạt động bình thường.</p>
+        </div>
+      `,
+    });
+
+    logger.info(`Test email sent to ${targetEmail}`, { messageId: info.messageId });
+
+    res.json({
+      success: true,
+      message: `Email đã được gửi đến ${targetEmail}`,
+      messageId: info.messageId,
+      config: {
+        GMAIL_USER: process.env.GMAIL_USER ? '✅ Configured' : '❌ Missing',
+        GMAIL_PASS: process.env.GMAIL_PASS ? '✅ Configured' : '❌ Missing',
+        EMAIL_USER: process.env.EMAIL_USER ? '✅ Configured' : '❌ Missing',
+        EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? '✅ Configured' : '❌ Missing',
+      }
+    });
+  } catch (error) {
+    logger.error('Test email failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      config: {
+        GMAIL_USER: process.env.GMAIL_USER ? '✅ Configured' : '❌ Missing',
+        GMAIL_PASS: process.env.GMAIL_PASS ? '✅ Configured' : '❌ Missing',
+        EMAIL_USER: process.env.EMAIL_USER ? '✅ Configured' : '❌ Missing',
+        EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? '✅ Configured' : '❌ Missing',
+      }
+    });
+  }
+});
+
+/**
  * GET /api/security/stats
  * Lấy thống kê tổng quan về bot attacks (PUBLIC - không cần đăng nhập)
  * 🆕 Kết hợp stats từ CẢ security.middleware VÀ firewall.middleware

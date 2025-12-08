@@ -42,17 +42,31 @@ const CONFIG = {
   DESKTOP_NOTIFICATION: true
 };
 
-// Transporter email - DISABLED để tránh crash
+// Transporter email - Kích hoạt với error handling
 let emailTransporter = null;
-// if (CONFIG.EMAIL_ENABLED && process.env.GMAIL_USER) {
-//   emailTransporter = nodemailer.createTransporter({
-//     service: 'gmail',
-//     auth: {
-//       user: process.env.GMAIL_USER,
-//       pass: process.env.GMAIL_PASS
-//     }
-//   });
-// }
+if (CONFIG.EMAIL_ENABLED && process.env.GMAIL_USER && process.env.GMAIL_PASS) {
+  try {
+    emailTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS
+      }
+    });
+    // Verify connection
+    emailTransporter.verify((error, success) => {
+      if (error) {
+        console.error('⚠️ AlertSystem Email transporter verification failed:', error.message);
+        emailTransporter = null;
+      } else {
+        console.log('✅ AlertSystem Email transporter ready');
+      }
+    });
+  } catch (error) {
+    console.error('⚠️ AlertSystem Email transporter creation failed:', error.message);
+    emailTransporter = null;
+  }
+}
 
 // Tracking alerts (tránh spam)
 const alertHistory = new Map();

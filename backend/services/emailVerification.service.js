@@ -13,9 +13,18 @@ const db = require('../models');
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
+    user: process.env.EMAIL_USER || process.env.GMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD || process.env.GMAIL_PASS,
   },
+});
+
+// Verify email connection on startup
+transporter.verify((error, success) => {
+    if (error) {
+        console.error('⚠️ Email Verification Service verification failed:', error.message);
+    } else {
+        console.log('✅ Email Verification Service ready - User:', process.env.EMAIL_USER || process.env.GMAIL_USER);
+    }
 });
 
 /**
