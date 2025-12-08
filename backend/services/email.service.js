@@ -27,6 +27,7 @@ transporter.verify((error, success) => {
  * @param {string} voucherCode - Mã voucher (VD: 'NEWUSER').
  */
 exports.sendWelcomeEmail = async (to, username, voucherCode) => {
+    console.log('📧 [Welcome Email] Sending to:', to, 'with voucher:', voucherCode);
     try {
         await transporter.sendMail({
             from: `"Shoe Store" <${process.env.GMAIL_USER}>`,
@@ -50,9 +51,9 @@ exports.sendWelcomeEmail = async (to, username, voucherCode) => {
                 </div>
             `,
         });
-        console.log(`Welcome email sent successfully to ${to}`);
+        console.log(`✅ [Welcome Email] Sent successfully to ${to}`);
     } catch (error) {
-        console.error(`Error sending welcome email to ${to}:`, error);
+        console.error(`❌ [Welcome Email] Error sending to ${to}:`, error.message);
         // Không ném lỗi để tránh làm hỏng flow đăng ký
     }
 };
@@ -62,6 +63,7 @@ exports.sendWelcomeEmail = async (to, username, voucherCode) => {
  * @param {string} otp - Mã OTP cần gửi.
  */
 exports.sendOtpEmail = async (to, otp) => {
+    console.log('📧 [OTP Email] Sending to:', to, 'OTP:', otp);
     try {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         const resetLink = `${frontendUrl}/reset-password?email=${encodeURIComponent(to)}`;
@@ -87,6 +89,12 @@ exports.sendOtpEmail = async (to, otp) => {
                 </div>
             `,
         });
+        console.log(`✅ [OTP Email] Sent successfully to ${to}`);
+    } catch (error) {
+        console.error(`❌ [OTP Email] Error sending to ${to}:`, error.message);
+        throw error; // Ném lỗi để controller biết và xử lý
+    }
+};
         console.log(`OTP email sent successfully to ${to}`);
     } catch (error) {
         console.error(`Error sending OTP email to ${to}:`, error);

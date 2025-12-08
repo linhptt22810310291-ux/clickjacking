@@ -299,15 +299,37 @@ export default function ProductDetail() {
   const scroll = (offset) =>
     carouselRef.current?.scrollBy({ left: offset, behavior: "smooth" });
 
+  // Handle review filter changes
+  const handleReviewFilterChange = (filterType, value) => {
+    let newFilter = { ...reviewFilter };
+    
+    if (filterType === 'rating') {
+      newFilter.rating = value;
+    } else if (filterType === 'hasMedia') {
+      newFilter.hasMedia = !newFilter.hasMedia;
+    } else if (filterType === 'sortBy') {
+      newFilter.sortBy = value;
+    }
+    
+    setReviewFilter(newFilter);
+    
+    // Fetch reviews with new filters
+    dispatch(fetchProductReviewsPage({
+      productId: id,
+      page: 1,
+      limit: 5,
+      ...newFilter
+    }));
+  };
+
   const handleReviewPageChange = (page) => {
     dispatch(fetchProductReviewsPage({ 
       productId: id, 
       page: page + 1,
+      limit: 5,
       ...reviewFilter
     }));
   };
-
-  // Handle review filter changes
   const handleReviewFilterChange = (filterType, value) => {
     const newFilter = { ...reviewFilter };
     if (filterType === 'rating') {

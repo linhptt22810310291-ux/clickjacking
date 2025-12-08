@@ -44,7 +44,14 @@ exports.forgotPassword = async (req, res) => {
         });
 
         // Gửi email chứa OTP thô
-        await emailService.sendOtpEmail(email, otp);
+        console.log('📧 [Forgot Password] Sending OTP email to:', email);
+        try {
+            await emailService.sendOtpEmail(email, otp);
+            console.log('✅ [Forgot Password] OTP email sent successfully to:', email);
+        } catch (emailError) {
+            console.error('❌ [Forgot Password] Email sending failed:', emailError.message);
+            // Không trả lỗi chi tiết cho user để tránh lộ thông tin
+        }
 
         res.json({ message: "OTP đã được gửi vào email của bạn." });
 

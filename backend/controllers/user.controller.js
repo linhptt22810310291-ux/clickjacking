@@ -206,12 +206,19 @@ exports.resetPasswordByAdmin = async (req, res) => {
         });
 
         // 3. Gửi email OTP cho người dùng
-        await emailService.sendOtpEmail(user.Email, otp);
+        console.log('📧 [Admin Reset Password] Sending email to:', user.Email);
+        try {
+            await emailService.sendOtpEmail(user.Email, otp);
+            console.log('✅ [Admin Reset Password] Email sent successfully to:', user.Email);
+        } catch (emailError) {
+            console.error('❌ [Admin Reset Password] Email sending failed:', emailError.message);
+            return res.status(500).json({ errors: [{ msg: 'Không thể gửi email. Vui lòng kiểm tra cấu hình email.' }] });
+        }
         
         res.json({ message: 'Đã gửi email chứa mã OTP reset mật khẩu cho người dùng.' });
 
     } catch (error) {
-        console.error('Lỗi khi admin reset password:', error);
+        console.error('❌ Lỗi khi admin reset password:', error);
         res.status(500).json({ errors: [{ msg: 'Lỗi máy chủ khi gửi email reset' }] });
     }
 };
