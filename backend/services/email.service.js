@@ -1,24 +1,86 @@
-// backend/services/email.service.js (ĐÃ KHÔI PHỤC)
+// backend/services/email.service.js
 'use strict';
 const nodemailer = require('nodemailer');
 
-// Cấu hình transporter một lần và tái sử dụng
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_PASS,
-    },
-});
+// Kiểm tra xem có sử dụng Resend API hay không
+const USE_RESEND = process.env.RESEND_API_KEY ? true : false;
 
-// Verify email connection on startup
-transporter.verify((error, success) => {
-    if (error) {
-        console.error('⚠️ Email Service (GMAIL) verification failed:', error.message);
-    } else {
-        console.log('✅ Email Service (GMAIL) ready - User:', process.env.GMAIL_USER);
+// Cấu hình transporter
+let transporter;
+let sendEmailFn;
+
+if (USE_RESEND) {
+    // Sử dụng Resend API (hoạt động tốt trên Render)
+    console.log('📧 Email Service: Using Resend API');
+    
+    sendEmailFn = async (mailOptions) => {
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                from: mailOptions.from || `Shoe Store <${process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'}>`,
+                to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
+                subject: mailOptions.subject,
+                html: mailOptions.html,
+            }),
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Resend API error: ${response.status}`);
+        }
+        
+        return await response.json();
+    };
+    
+    console.log('✅ Email Service (Resend) ready');
+} else {
+    // Fallback: Sử dụng Gmail SMTP với cấu hình tối ưu cho Render
+    console.log('📧 Email Service: Using Gmail SMTP');
+    
+    transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true, // SSL
+        auth: {
+            user: process.env.GMAIL_USER,
+            pass: process.env.GMAIL_PASS,
+        },
+        connectionTimeout: 60000, // 60 giây
+        greetingTimeout: 30000,
+        socketTimeout: 60000,
+    });
+    
+    sendEmailFn = async (mailOptions) => {
+        return await transporter.sendMail(mailOptions);
+    };
+
+    // Verify email connection on startup
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error('⚠️ Email Service (GMAIL) verification failed:', error.message);
+            console.log('💡 Tip: Add RESEND_API_KEY to use Resend API instead (works better on Render)');
+        } else {
+            console.log('✅ Email Service (GMAIL) ready - User:', process.env.GMAIL_USER);
+        }
+    });
+}
+
+// Helper function để gửi email
+const sendEmail = async (mailOptions) => {
+    // Đảm bảo from được set
+    if (!mailOptions.from) {
+        if (USE_RESEND) {
+            mailOptions.from = `Shoe Store <${process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'}>`;
+        } else {
+            mailOptions.from = `"Shoe Store" <${process.env.GMAIL_USER}>`;
+        }
     }
-});
+    return await sendEmailFn(mailOptions);
+};
 /**
  * === HÀM MỚI: Gửi email Chào mừng ===
  * Gửi email cho người dùng mới, đính kèm mã voucher để họ tự nhận.
@@ -29,8 +91,7 @@ transporter.verify((error, success) => {
 exports.sendWelcomeEmail = async (to, username, voucherCode) => {
     console.log('📧 [Welcome Email] Sending to:', to, 'with voucher:', voucherCode);
     try {
-        await transporter.sendMail({
-            from: `"Shoe Store" <${process.env.GMAIL_USER}>`,
+        await sendEmail({
             to: to,
             subject: "Chào mừng bạn đến với Shoe Store!",
             html: `
@@ -68,8 +129,7 @@ exports.sendOtpEmail = async (to, otp) => {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         const resetLink = `${frontendUrl}/reset-password?email=${encodeURIComponent(to)}`;
 
-        await transporter.sendMail({
-            from: `"Shoe Store" <${process.env.GMAIL_USER}>`,
+        await sendEmail({
             to: to,
             subject: "Mã đặt lại mật khẩu",
             html: `
@@ -104,8 +164,7 @@ exports.sendOtpEmail = async (to, otp) => {
  */
 exports.sendPasswordResetByAdminEmail = async (to, username, newPassword) => {
     try {
-        await transporter.sendMail({
-            from: `"Shoe Store" <${process.env.GMAIL_USER}>`,
+        await sendEmail({
             to: to,
             subject: 'Thông báo: Mật khẩu của bạn đã được đặt lại',
             html: `
@@ -176,7 +235,7 @@ exports.sendCouponEmail = async (to, coupon, subject = 'Mã khuyến mãi từ S
                 </div>
             `,
         };
-        await transporter.sendMail(mailOptions);
+        await sendEmail(mailOptions);
         console.log(`Coupon email sent successfully to ${to}`); 
     } catch (error) {
         // Nếu có lỗi, chúng ta in log chi tiết
@@ -197,8 +256,7 @@ exports.sendEmailVerificationEmail = async (to, username, verificationToken) => 
     try {
         const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
 
-        await transporter.sendMail({
-            from: `"Shoe Store" <${process.env.GMAIL_USER}>`,
+        await sendEmail({
             to: to,
             subject: "Xác thực email tài khoản Shoe Store",
             html: `
