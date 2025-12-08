@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Container, Row, Col, Card, Table, Badge, Button, Form, InputGroup, Spinner, Alert, Tab, Tabs, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Card, Table, Badge, Button, Form, InputGroup, Spinner, Alert, Tab, Tabs, Modal, Image } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import { FaComments, FaUser, FaRobot, FaHeadset, FaPaperPlane, FaTimes, FaPlus, FaTrash, FaEdit } from 'react-icons/fa';
+import { FaComments, FaUser, FaRobot, FaHeadset, FaPaperPlane, FaTimes, FaPlus, FaTrash, FaEdit, FaBoxOpen } from 'react-icons/fa';
 import {
   getAdminChatConversationsAPI,
   getAdminChatConversationDetailAPI,
@@ -14,7 +14,8 @@ import {
   getAutoRepliesAPI,
   addAutoReplyAPI,
   updateAutoReplyAPI,
-  deleteAutoReplyAPI
+  deleteAutoReplyAPI,
+  getProductsAPI
 } from '../../api';
 
 // Status badge colors
@@ -56,6 +57,12 @@ export default function AdminChat() {
   const [editingReply, setEditingReply] = useState(null);
   const [replyForm, setReplyForm] = useState({ triggerKeywords: '', response: '', priority: 0 });
   const [repliesLoading, setRepliesLoading] = useState(false);
+  
+  // Product search state
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [searchedProducts, setSearchedProducts] = useState([]);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
   
   const messagesEndRef = useRef(null);
   const pollIntervalRef = useRef(null);
@@ -186,6 +193,47 @@ export default function AdminChat() {
     } catch (error) {
       console.error('Reopen conversation error:', error);
       toast.error('Không thể mở lại hội thoại.');
+    }
+  };
+
+  // === Product Sharing ===
+  const handleSearchProducts = async () => {
+    if (!productSearch.trim()) return;
+    setProductSearchLoading(true);
+    try {
+      const { data } = await getProductsAPI({ keyword: productSearch, page: 1, limit: 10 });
+      setSearchedProducts(data.products || []);
+    } catch (error) {
+      console.error('Search products error:', error);
+      toast.error('Không thể tìm sản phẩm.');
+    } finally {
+      setProductSearchLoading(false);
+    }
+  };
+
+  const handleSendProduct = async (product) => {
+    if (!selectedConversation) return;
+    
+    const FRONTEND_URL = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000' 
+      : 'https://clickjacking-frontend.onrender.com';
+    
+    const productUrl = `${FRONTEND_URL}/product/${product.ProductID}`;
+    const messageText = `🛍️ Sản phẩm gợi ý: ${product.Name}\n💰 Giá: ${Number(product.Price).toLocaleString('vi-VN')}₫\n🔗 Xem chi tiết: ${productUrl}`;
+    
+    setSending(true);
+    try {
+      const { data } = await adminSendChatMessageAPI(selectedConversation.ConversationID, { message: messageText });
+      setMessages(prev => [...prev, data]);
+      setShowProductModal(false);
+      setProductSearch('');
+      setSearchedProducts([]);
+      toast.success('Đã gửi thông tin sản phẩm!');
+    } catch (error) {
+      console.error('Send product error:', error);
+      toast.error('Không thể gửi sản phẩm.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -542,6 +590,14 @@ export default function AdminChat() {
                     {selectedConversation.Status !== 'closed' && (
                       <Card.Footer>
                         <Form onSubmit={handleSendMessage} className="d-flex gap-2">
+                          <Button 
+                            variant="outline-info" 
+                            onClick={() => setShowProductModal(true)}
+                            title="Gửi sản phẩm"
+                            type="button"
+                          >
+                            <FaBoxOpen />
+                          </Button>
                           <Form.Control
                             type="text"
                             value={inputMessage}
@@ -708,6 +764,51 @@ export default function AdminChat() {
             <Button variant="primary" type="submit">Lưu</Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* Product Search Modal */}
+      <Modal show={showProductModal} onHide={() => { setShowProductModal(false); setProductSearch(''); setSearchedProducts([]); }} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Tìm sản phẩm để gửi</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <InputGroup className="mb-3">
+            <Form.Control
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Nhập tên sản phẩm..."
+              onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchProducts(); } }}
+            />
+            <Button onClick={handleSearchProducts} disabled={productSearchLoading}>
+              {productSearchLoading ? <Spinner size="sm" /> : 'Tìm'}
+            </Button>
+          </InputGroup>
+
+          {searchedProducts.length > 0 ? (
+            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {searchedProducts.map(product => (
+                <Card key={product.ProductID} className="mb-2">
+                  <Card.Body className="d-flex align-items-center gap-3">
+                    <Image 
+                      src={product.DefaultImage || 'https://via.placeholder.com/80'} 
+                      style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }}
+                    />
+                    <div className="flex-grow-1">
+                      <h6 className="mb-1">{product.Name}</h6>
+                      <p className="mb-0 text-muted">{Number(product.Price).toLocaleString('vi-VN')}₫</p>
+                    </div>
+                    <Button variant="primary" size="sm" onClick={() => handleSendProduct(product)}>
+                      Gửi
+                    </Button>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
+          ) : productSearch && !productSearchLoading ? (
+            <Alert variant="info">Không tìm thấy sản phẩm nào.</Alert>
+          ) : null}
+        </Modal.Body>
       </Modal>
     </Container>
   );

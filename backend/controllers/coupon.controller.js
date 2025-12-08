@@ -508,11 +508,30 @@ exports.sendCouponToCustomers = async (req, res) => {
             }
         }
         
-        await emailService.sendCouponEmail(emailsToSend, coupon);
+        // Gửi email từng cái một để tránh rate limit (Resend free tier)
+        let successCount = 0;
+        let failedCount = 0;
         
-        let message = `Đã gửi email coupon tới ${emailsToSend.length} địa chỉ.`;
+        for (const email of emailsToSend) {
+            try {
+                await emailService.sendCouponEmail(email, coupon);
+                successCount++;
+                // Delay nhỏ giữa các email để tránh rate limit
+                if (emailsToSend.length > 1) {
+                    await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
+                }
+            } catch (emailError) {
+                console.error(`Failed to send coupon email to ${email}:`, emailError.message);
+                failedCount++;
+            }
+        }
         
-        return res.json({ message });
+        let message = `Đã gửi thành công ${successCount}/${emailsToSend.length} email.`;
+        if (failedCount > 0) {
+            message += ` ${failedCount} email thất bại.`;
+        }
+        
+        return res.json({ message, successCount, failedCount, total: emailsToSend.length });
 
     } catch(error) {
         console.error('ADMIN SEND COUPON EMAIL ERROR:', error);
