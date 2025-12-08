@@ -238,56 +238,7 @@
   font-size: 13px;
   color: #333;
   display: -webkit-box;
-  -webkit-line-clamp: 2;2025-12-08T12:44:49.649644721Z   npm audit fix --force
-2025-12-08T12:44:49.649646871Z 
-2025-12-08T12:44:49.649649521Z Run `npm audit` for details.
-2025-12-08T12:44:51.815917258Z 
-2025-12-08T12:44:51.815948049Z up to date, audited 1680 packages in 2s
-2025-12-08T12:44:51.815957839Z 
-2025-12-08T12:44:51.815975409Z 297 packages are looking for funding
-2025-12-08T12:44:51.815987759Z   run `npm fund` for details
-2025-12-08T12:44:51.82865779Z 
-2025-12-08T12:44:51.82867691Z 14 vulnerabilities (4 moderate, 10 high)
-2025-12-08T12:44:51.8286793Z 
-2025-12-08T12:44:51.82868212Z To address issues that do not require attention, run:
-2025-12-08T12:44:51.8286845Z   npm audit fix
-2025-12-08T12:44:51.82868654Z 
-2025-12-08T12:44:51.82868853Z To address all issues (including breaking changes), run:
-2025-12-08T12:44:51.828691391Z   npm audit fix --force
-2025-12-08T12:44:51.8286933Z 
-2025-12-08T12:44:51.82869624Z Run `npm audit` for details.
-2025-12-08T12:44:51.921870242Z ==> Running build command 'npm install; npm run build'...
-2025-12-08T12:44:53.885099684Z 
-2025-12-08T12:44:53.885127315Z up to date, audited 1680 packages in 2s
-2025-12-08T12:44:53.885137475Z 
-2025-12-08T12:44:53.885140125Z 297 packages are looking for funding
-2025-12-08T12:44:53.885144865Z   run `npm fund` for details
-2025-12-08T12:44:53.896598188Z 
-2025-12-08T12:44:53.896616428Z 14 vulnerabilities (4 moderate, 10 high)
-2025-12-08T12:44:53.896619399Z 
-2025-12-08T12:44:53.896622308Z To address issues that do not require attention, run:
-2025-12-08T12:44:53.896625288Z   npm audit fix
-2025-12-08T12:44:53.896627339Z 
-2025-12-08T12:44:53.896629969Z To address all issues (including breaking changes), run:
-2025-12-08T12:44:53.896632889Z   npm audit fix --force
-2025-12-08T12:44:53.896634919Z 
-2025-12-08T12:44:53.896655819Z Run `npm audit` for details.
-2025-12-08T12:44:54.04349318Z 
-2025-12-08T12:44:54.04350871Z > shoe-store-frontend@1.0.0 build
-2025-12-08T12:44:54.04351162Z > react-scripts build
-2025-12-08T12:44:54.043535001Z 
-2025-12-08T12:44:54.465107074Z [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-2025-12-08T12:44:54.981595183Z Creating an optimized production build...
-2025-12-08T12:45:27.94422385Z [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
-2025-12-08T12:45:30.920244973Z Failed to compile.
-2025-12-08T12:45:30.920270344Z 
-2025-12-08T12:45:30.920829946Z [eslint] 
-2025-12-08T12:45:30.920845307Z src/pages/user/ProductDetail.js
-2025-12-08T12:45:30.920851187Z Syntax error: Identifier 'handleReviewFilterChange' has already been declared. (333:8) (333:8)
-2025-12-08T12:45:30.920857267Z 
-2025-12-08T12:45:30.920860667Z 
-2025-12-08T12:45:31.126383603Z ==> Build failed 😞
-2025-12-08T12:45:31.127830155Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+  -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
