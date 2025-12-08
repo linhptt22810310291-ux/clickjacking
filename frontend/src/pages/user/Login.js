@@ -60,6 +60,22 @@ useEffect(() => {
     
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
+    const error = params.get('error');
+    const errorMessage = params.get('message');
+
+    // Xử lý lỗi từ social login (Facebook, Google)
+    if (error) {
+        if (error === 'facebook_error' || error === 'facebook_failed') {
+            setFormError(`Đăng nhập Facebook thất bại: ${decodeURIComponent(errorMessage || 'Không rõ lỗi')}`);
+        } else if (error === 'google_error' || error === 'google_failed') {
+            setFormError(`Đăng nhập Google thất bại: ${decodeURIComponent(errorMessage || 'Không rõ lỗi')}`);
+        } else {
+            setFormError(`Đăng nhập thất bại: ${decodeURIComponent(errorMessage || error)}`);
+        }
+        // Clear URL params after processing
+        navigate('/login', { replace: true });
+        return;
+    }
 
     // Nếu có token trên URL, xử lý nó và xóa khỏi URL
     if (token) {

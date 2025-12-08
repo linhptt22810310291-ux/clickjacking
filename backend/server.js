@@ -588,12 +588,29 @@ app.get("/auth/google/callback", passport.authenticate("google", { failureRedire
     res.redirect(`${FRONTEND_URL}/login?token=${token}&role=${user.Role}`);
 });
 
-app.get("/auth/facebook", passport.authenticate("facebook", { scope: ["email"], session: false }));
-app.get("/auth/facebook/callback", passport.authenticate("facebook", { failureRedirect: `${FRONTEND_URL}/login`, session: false }), (req, res) => {
-    const user = req.user.get({ plain: true });
-    const payload = { id: user.UserID, role: user.Role, username: user.Username, email: user.Email, avatar: user.AvatarURL };
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
-    res.redirect(`${FRONTEND_URL}/login?token=${token}&role=${user.Role}`);
+app.get("/auth/facebook", (req, res, next) => {
+    console.log('🔵 Facebook OAuth initiated');
+    passport.authenticate("facebook", { scope: ["email"], session: false })(req, res, next);
+});
+
+app.get("/auth/facebook/callback", (req, res, next) => {
+    console.log('🔵 Facebook callback received');
+    passport.authenticate("facebook", { session: false }, (err, user, info) => {
+        if (err) {
+            console.error('❌ Facebook OAuth error:', err);
+            return res.redirect(`${FRONTEND_URL}/login?error=facebook_error&message=${encodeURIComponent(err.message || 'Unknown error')}`);
+        }
+        if (!user) {
+            console.error('❌ Facebook OAuth failed - no user:', info);
+            return res.redirect(`${FRONTEND_URL}/login?error=facebook_failed&message=${encodeURIComponent(info?.message || 'Authentication failed')}`);
+        }
+        
+        const userData = user.get({ plain: true });
+        const payload = { id: userData.UserID, role: userData.Role, username: userData.Username, email: userData.Email, avatar: userData.AvatarURL };
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
+        console.log('✅ Facebook OAuth success for:', userData.Email);
+        res.redirect(`${FRONTEND_URL}/login?token=${token}&role=${userData.Role}`);
+    })(req, res, next);
 });
 
 
