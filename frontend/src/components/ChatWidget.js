@@ -50,6 +50,12 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productSent, setProductSent] = useState(false); // Track if product context was sent
+  const [productCategory, setProductCategory] = useState('');
+  const [productTargetGroup, setProductTargetGroup] = useState('');
+  const [productSort, setProductSort] = useState('');
+  const [productPage, setProductPage] = useState(1);
+  const [productTotalPages, setProductTotalPages] = useState(1);
+  const [productTotal, setProductTotal] = useState(0);
   
   // Order inquiry states
   const [showOrderSelector, setShowOrderSelector] = useState(false);
@@ -82,16 +88,22 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
   const fetchProducts = useCallback(async (search = '') => {
     setLoadingProducts(true);
     try {
-      const params = { page: 1, limit: 20 };
-      if (search) params.search = search;
+      const params = { page: productPage, limit: 12 };
+      if (search) params.keyword = search; // Fix: backend expects 'keyword', not 'search'
+      if (productCategory) params.category = productCategory;
+      if (productTargetGroup) params.targetGroup = productTargetGroup;
+      if (productSort) params.sort = productSort;
+      
       const { data } = await api.get('/products', { params });
       setProducts(data.products || []);
+      setProductTotalPages(data.totalPages || 1);
+      setProductTotal(data.total || 0);
     } catch (error) {
       console.error('Fetch products error:', error);
     } finally {
       setLoadingProducts(false);
     }
-  }, []);
+  }, [productPage, productCategory, productTargetGroup, productSort]);
 
   // Search products with debounce
   useEffect(() => {
@@ -849,16 +861,24 @@ Tôi cần hỗ trợ về đơn hàng này.`;
       {/* Product Selector Modal */}
       <Modal 
         show={showProductSelector} 
-        onHide={() => setShowProductSelector(false)}
+        onHide={() => {
+          setShowProductSelector(false);
+          setProductSearchTerm('');
+          setProductCategory('');
+          setProductTargetGroup('');
+          setProductSort('');
+          setProductPage(1);
+        }}
         size="lg"
         centered
         className="chat-product-selector-modal"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Chọn sản phẩm để gửi</Modal.Title>
+          <Modal.Title>Chọn sản phẩm ({productTotal} sản phẩm)</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ maxHeight: '65vh', overflowY: 'auto' }} className="chat-product-selector">
-          <InputGroup className="mb-3">
+          {/* Search */}
+          <InputGroup className="mb-2">
             <InputGroup.Text><FaSearch /></InputGroup.Text>
             <Form.Control
               placeholder="Tìm kiếm sản phẩm..."
@@ -867,45 +887,117 @@ Tôi cần hỗ trợ về đơn hàng này.`;
             />
           </InputGroup>
           
+          {/* Filters */}
+          <div className="row g-2 mb-3">
+            <div className="col-4">
+              <Form.Select 
+                size="sm" 
+                value={productCategory} 
+                onChange={(e) => { setProductCategory(e.target.value); setProductPage(1); }}
+              >
+                <option value="">Danh mục</option>
+                <option value="Giày Thể Thao">Thể Thao</option>
+                <option value="Giày Tây">Giày Tây</option>
+                <option value="Giày Sandal">Sandal</option>
+                <option value="Giày Boot">Boot</option>
+                <option value="Giày Lười">Giày Lười</option>
+              </Form.Select>
+            </div>
+            <div className="col-4">
+              <Form.Select 
+                size="sm" 
+                value={productTargetGroup} 
+                onChange={(e) => { setProductTargetGroup(e.target.value); setProductPage(1); }}
+              >
+                <option value="">Đối tượng</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Unisex">Unisex</option>
+              </Form.Select>
+            </div>
+            <div className="col-4">
+              <Form.Select 
+                size="sm" 
+                value={productSort} 
+                onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}
+              >
+                <option value="">Sắp xếp</option>
+                <option value="price-asc">Giá ↑</option>
+                <option value="price-desc">Giá ↓</option>
+                <option value="name">A-Z</option>
+                <option value="newest">Mới</option>
+              </Form.Select>
+            </div>
+          </div>
+          
           {loadingProducts ? (
             <div className="text-center py-4">
               <Spinner animation="border" variant="primary" />
             </div>
           ) : (
-            <div className="row g-3">
-              {products.map(product => (
-                <div key={product.ProductID} className="col-6 col-md-4 col-lg-3">
-                  <div 
-                    className={`card h-100 ${selectedProduct?.ProductID === product.ProductID ? 'selected border-primary' : ''}`}
-                    onClick={() => setSelectedProduct(product)}
-                  >
-                    <img 
-                      src={resolveImageUrl(product.DefaultImage)} 
-                      alt={product.Name}
-                      className="card-img-top"
-                    />
-                    <div className="card-body">
-                      <h6 className="card-title">{product.Name}</h6>
-                      <p className="card-text text-danger mb-0">
-                        {Number(product.DiscountedPrice || product.Price).toLocaleString('vi-VN')}₫
-                      </p>
-                    </div>
-                    {selectedProduct?.ProductID === product.ProductID && (
-                      <div className="position-absolute top-0 end-0 m-2">
-                        <Badge bg="primary" className="rounded-circle p-2"><FaCheck /></Badge>
+            <>
+              <div className="row g-3">
+                {products.map(product => (
+                  <div key={product.ProductID} className="col-6 col-md-4 col-lg-3">
+                    <div 
+                      className={`card h-100 ${selectedProduct?.ProductID === product.ProductID ? 'selected border-primary' : ''}`}
+                      onClick={() => setSelectedProduct(product)}
+                    >
+                      <img 
+                        src={resolveImageUrl(product.DefaultImage)} 
+                        alt={product.Name}
+                        className="card-img-top"
+                      />
+                      <div className="card-body">
+                        <h6 className="card-title">{product.Name}</h6>
+                        <p className="card-text text-danger mb-0">
+                          {Number(product.DiscountedPrice || product.Price).toLocaleString('vi-VN')}₫
+                        </p>
                       </div>
-                    )}
+                      {selectedProduct?.ProductID === product.ProductID && (
+                        <div className="position-absolute top-0 end-0 m-2">
+                          <Badge bg="primary" className="rounded-circle p-2"><FaCheck /></Badge>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+                
+                {products.length === 0 && (
+                  <div className="col-12 text-center text-muted py-5">
+                    <FaBox size={40} className="mb-2 opacity-50" />
+                    <p>Không tìm thấy sản phẩm</p>
+                  </div>
+                )}
+              </div>
               
-              {products.length === 0 && (
-                <div className="col-12 text-center text-muted py-5">
-                  <FaBox size={40} className="mb-2 opacity-50" />
-                  <p>Không tìm thấy sản phẩm</p>
+              {/* Pagination */}
+              {productTotalPages > 1 && (
+                <div className="d-flex justify-content-center mt-3">
+                  <Button 
+                    size="sm" 
+                    variant="outline-secondary" 
+                    disabled={productPage === 1} 
+                    onClick={() => setProductPage(p => Math.max(1, p - 1))}
+                    className="me-2"
+                  >
+                    ← Trước
+                  </Button>
+                  <span className="align-self-center mx-2">
+                    Trang {productPage}/{productTotalPages}
+                  </span>
+                  <Button 
+                    size="sm" 
+                    variant="outline-secondary" 
+                    disabled={productPage === productTotalPages} 
+                    onClick={() => setProductPage(p => Math.min(productTotalPages, p + 1))}
+                    className="ms-2"
+                  >
+                    Sau →
+                  </Button>
                 </div>
               )}
-            </div>
+            </>
           )}
         </Modal.Body>
         <Modal.Footer>

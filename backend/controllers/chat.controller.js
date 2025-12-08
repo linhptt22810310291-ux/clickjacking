@@ -494,11 +494,24 @@ exports.reopenConversation = async (req, res) => {
  */
 exports.getBannedKeywords = async (req, res) => {
   try {
-    const keywords = await db.ChatBannedKeyword.findAll({
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.max(1, parseInt(req.query.limit || '10', 10));
+    const offset = (page - 1) * limit;
+    
+    const { count, rows } = await db.ChatBannedKeyword.findAndCountAll({
       order: [['CreatedAt', 'DESC']],
-      include: [{ model: db.User, as: 'creator', attributes: ['Username'] }]
+      include: [{ model: db.User, as: 'creator', attributes: ['Username'] }],
+      limit,
+      offset
     });
-    res.json(keywords);
+    
+    res.json({ 
+      keywords: rows, 
+      total: count, 
+      page, 
+      limit, 
+      totalPages: Math.ceil(count / limit) 
+    });
   } catch (error) {
     console.error('GET BANNED KEYWORDS ERROR:', error);
     res.status(500).json({ errors: [{ msg: 'Lỗi máy chủ' }] });
@@ -564,10 +577,23 @@ exports.deleteBannedKeyword = async (req, res) => {
  */
 exports.getAutoReplies = async (req, res) => {
   try {
-    const replies = await db.ChatAutoReply.findAll({
-      order: [['Priority', 'DESC'], ['CreatedAt', 'DESC']]
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const limit = Math.max(1, parseInt(req.query.limit || '10', 10));
+    const offset = (page - 1) * limit;
+    
+    const { count, rows } = await db.ChatAutoReply.findAndCountAll({
+      order: [['Priority', 'DESC'], ['CreatedAt', 'DESC']],
+      limit,
+      offset
     });
-    res.json(replies);
+    
+    res.json({ 
+      replies: rows, 
+      total: count, 
+      page, 
+      limit, 
+      totalPages: Math.ceil(count / limit) 
+    });
   } catch (error) {
     console.error('GET AUTO REPLIES ERROR:', error);
     res.status(500).json({ errors: [{ msg: 'Lỗi máy chủ' }] });

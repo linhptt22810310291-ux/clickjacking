@@ -74,9 +74,13 @@ exports.getAllProducts = async (req, res) => {
 
         const whereProduct = {};
         if (keyword) {
+            // Cải thiện search: chỉ match nếu keyword xuất hiện như một từ riêng biệt
+            // hoặc ở đầu tên sản phẩm
+            const trimmedKeyword = keyword.trim();
             whereProduct[Op.or] = [
-                { Name: { [Op.like]: `%${keyword}%` } },
-                { Description: { [Op.like]: `%${keyword}%` } },
+                { Name: { [Op.like]: `${trimmedKeyword}%` } },        // Bắt đầu bằng keyword
+                { Name: { [Op.like]: `% ${trimmedKeyword}%` } },      // Keyword là từ riêng biệt
+                { Description: { [Op.like]: `%${trimmedKeyword}%` } }, // Hoặc trong description
             ];
         }
 

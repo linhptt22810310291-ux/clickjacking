@@ -356,8 +356,8 @@ export const reopenChatConversationAPI = (conversationId) =>
     api.put(`/admin/chat/conversations/${conversationId}/reopen`);
 
 // --- Chat Banned Keywords (Admin) ---
-export const getBannedKeywordsAPI = () =>
-    api.get('/admin/chat/banned-keywords');
+export const getBannedKeywordsAPI = (page = 1, limit = 10) =>
+    api.get('/admin/chat/banned-keywords', { params: { page, limit } });
 
 export const addBannedKeywordAPI = (data) =>
     api.post('/admin/chat/banned-keywords', data);
@@ -366,8 +366,8 @@ export const deleteBannedKeywordAPI = (id) =>
     api.delete(`/admin/chat/banned-keywords/${id}`);
 
 // --- Chat Auto Replies (Admin) ---
-export const getAutoRepliesAPI = () =>
-    api.get('/admin/chat/auto-replies');
+export const getAutoRepliesAPI = (page = 1, limit = 10) =>
+    api.get('/admin/chat/auto-replies', { params: { page, limit } });
 
 export const addAutoReplyAPI = (data) =>
     api.post('/admin/chat/auto-replies', data);

@@ -84,14 +84,18 @@ exports.getPendingReviews = async (req, res) => {
             attributes: ['ProductID', 'OrderID', 'OrderItemID']
         });
 
-        // Tạo Set để check nhanh
+        // Tạo Set để check nhanh - phải dùng OrderItemID để đảm bảo chính xác
         const reviewedSet = new Set(
-            existingReviews.map(r => `${r.ProductID}-${r.OrderID}-${r.OrderItemID}`)
+            existingReviews.map(r => {
+                const itemId = r.OrderItemID || 'null';
+                return `${r.ProductID}-${r.OrderID}-${itemId}`;
+            })
         );
 
         // Lọc những items chưa được đánh giá
         const pendingItems = deliveredOrderItems.filter(item => {
-            const key = `${item.variant?.product?.ProductID}-${item.OrderID}-${item.OrderItemID}`;
+            const itemId = item.OrderItemID || 'null';
+            const key = `${item.variant?.product?.ProductID}-${item.OrderID}-${itemId}`;
             return !reviewedSet.has(key);
         });
 

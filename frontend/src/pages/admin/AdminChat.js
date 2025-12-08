@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Container, Row, Col, Card, Table, Badge, Button, Form, InputGroup, Spinner, Alert, Tab, Tabs, Modal, Image } from 'react-bootstrap';
+import { Container, Row, Col, Card, Table, Badge, Button, Form, InputGroup, Spinner, Alert, Tab, Tabs, Modal, Image, Pagination } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { FaComments, FaUser, FaRobot, FaHeadset, FaPaperPlane, FaTimes, FaPlus, FaTrash, FaEdit, FaBoxOpen } from 'react-icons/fa';
 import {
@@ -50,6 +50,8 @@ export default function AdminChat() {
   const [bannedKeywords, setBannedKeywords] = useState([]);
   const [newKeyword, setNewKeyword] = useState('');
   const [keywordsLoading, setKeywordsLoading] = useState(false);
+  const [keywordsPage, setKeywordsPage] = useState(1);
+  const [keywordsTotalPages, setKeywordsTotalPages] = useState(1);
   
   // Auto replies state
   const [autoReplies, setAutoReplies] = useState([]);
@@ -57,12 +59,20 @@ export default function AdminChat() {
   const [editingReply, setEditingReply] = useState(null);
   const [replyForm, setReplyForm] = useState({ triggerKeywords: '', response: '', priority: 0 });
   const [repliesLoading, setRepliesLoading] = useState(false);
+  const [repliesPage, setRepliesPage] = useState(1);
+  const [repliesTotalPages, setRepliesTotalPages] = useState(1);
   
   // Product search state
   const [showProductModal, setShowProductModal] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [searchedProducts, setSearchedProducts] = useState([]);
   const [productSearchLoading, setProductSearchLoading] = useState(false);
+  const [productCategory, setProductCategory] = useState('');
+  const [productTargetGroup, setProductTargetGroup] = useState('');
+  const [productSort, setProductSort] = useState('');
+  const [productPage, setProductPage] = useState(1);
+  const [productTotalPages, setProductTotalPages] = useState(1);
+  const [productTotal, setProductTotal] = useState(0);
   
   const messagesEndRef = useRef(null);
   const pollIntervalRef = useRef(null);
@@ -142,6 +152,27 @@ export default function AdminChat() {
     }
   }, [activeTab, loadConversations]);
 
+  // Reload keywords when page changes
+  useEffect(() => {
+    if (activeTab === 'keywords') {
+      loadBannedKeywords();
+    }
+  }, [keywordsPage]);
+
+  // Reload replies when page changes
+  useEffect(() => {
+    if (activeTab === 'autoreplies') {
+      loadAutoReplies();
+    }
+  }, [repliesPage]);
+
+  // Load products when modal opens or filters/page change
+  useEffect(() => {
+    if (showProductModal) {
+      handleSearchProducts();
+    }
+  }, [showProductModal, productPage, productCategory, productTargetGroup, productSort]);
+
   // Send admin message
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -197,12 +228,22 @@ export default function AdminChat() {
   };
 
   // === Product Sharing ===
-  const handleSearchProducts = async () => {
-    if (!productSearch.trim()) return;
+  const handleSearchProducts = async (resetPage = false) => {
+    if (resetPage) setProductPage(1);
+    const page = resetPage ? 1 : productPage;
+    
     setProductSearchLoading(true);
     try {
-      const { data } = await getProductsAPI({ keyword: productSearch, page: 1, limit: 10 });
+      const params = { page, limit: 12 };
+      if (productSearch.trim()) params.keyword = productSearch.trim();
+      if (productCategory) params.category = productCategory;
+      if (productTargetGroup) params.targetGroup = productTargetGroup;
+      if (productSort) params.sort = productSort;
+      
+      const { data } = await getProductsAPI(params);
       setSearchedProducts(data.products || []);
+      setProductTotalPages(data.totalPages || 1);
+      setProductTotal(data.total || 0);
     } catch (error) {
       console.error('Search products error:', error);
       toast.error('Không thể tìm sản phẩm.');
@@ -219,7 +260,16 @@ export default function AdminChat() {
       : 'https://clickjacking-frontend.onrender.com';
     
     const productUrl = `${FRONTEND_URL}/product/${product.ProductID}`;
-    const messageText = `🛍️ Sản phẩm gợi ý: ${product.Name}\n💰 Giá: ${Number(product.Price).toLocaleString('vi-VN')}₫\n🔗 Xem chi tiết: ${productUrl}`;
+    
+    // Format đặc biệt để frontend parse thành card
+    const messageText = JSON.stringify({
+      type: 'product',
+      productId: product.ProductID,
+      productName: product.Name,
+      productPrice: product.Price,
+      productImage: product.DefaultImage || '',
+      productUrl: productUrl
+    });
     
     setSending(true);
     try {
@@ -241,8 +291,9 @@ export default function AdminChat() {
   const loadBannedKeywords = async () => {
     setKeywordsLoading(true);
     try {
-      const { data } = await getBannedKeywordsAPI();
-      setBannedKeywords(data || []);
+      const { data } = await getBannedKeywordsAPI(keywordsPage, 10);
+      setBannedKeywords(data.keywords || []);
+      setKeywordsTotalPages(data.totalPages || 1);
     } catch (error) {
       console.error('Load keywords error:', error);
     } finally {
@@ -280,8 +331,9 @@ export default function AdminChat() {
   const loadAutoReplies = async () => {
     setRepliesLoading(true);
     try {
-      const { data } = await getAutoRepliesAPI();
-      setAutoReplies(data || []);
+      const { data } = await getAutoRepliesAPI(repliesPage, 10);
+      setAutoReplies(data.replies || []);
+      setRepliesTotalPages(data.totalPages || 1);
     } catch (error) {
       console.error('Load auto replies error:', error);
     } finally {
@@ -361,7 +413,50 @@ export default function AdminChat() {
     return conv.GuestName || 'Khách vãng lai';
   };
 
-  // Check if message contains product card
+  // Render message content (parse product card)
+  const renderMessageContent = (msg) => {
+    try {
+      const parsed = JSON.parse(msg.Message);
+      if (parsed.type === 'product') {
+        const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+        const imageUrl = parsed.productImage?.startsWith('http') 
+          ? parsed.productImage 
+          : `${API_BASE_URL}${parsed.productImage}`;
+        
+        return (
+          <Card className="mb-0" style={{ maxWidth: '300px' }}>
+            <Card.Img 
+              variant="top" 
+              src={imageUrl || 'https://via.placeholder.com/200'} 
+              style={{ height: '150px', objectFit: 'cover' }}
+            />
+            <Card.Body className="p-2">
+              <Card.Title style={{ fontSize: '14px', marginBottom: '0.5rem' }}>
+                🛍️ {parsed.productName}
+              </Card.Title>
+              <Card.Text style={{ fontSize: '13px', marginBottom: '0.5rem', color: '#dc3545', fontWeight: 'bold' }}>
+                💰 {Number(parsed.productPrice).toLocaleString('vi-VN')}₫
+              </Card.Text>
+              <Button 
+                size="sm" 
+                variant="primary" 
+                href={parsed.productUrl} 
+                target="_blank"
+                style={{ fontSize: '12px' }}
+              >
+                Xem chi tiết
+              </Button>
+            </Card.Body>
+          </Card>
+        );
+      }
+    } catch (e) {
+      // Not JSON or not product type, render as text
+    }
+    return msg.Message;
+  };
+
+  // Check if message contains product card (deprecated, use renderMessageContent)
   const isProductMessage = (message) => {
     return message && (message.includes('[PRODUCT_CARD]') || message.includes('[SẢN PHẨM]'));
   };
@@ -662,6 +757,19 @@ export default function AdminChat() {
                   </tbody>
                 </Table>
               )}
+              {keywordsTotalPages > 1 && (
+                <div className="d-flex justify-content-center mt-3">
+                  <Pagination>
+                    <Pagination.Prev disabled={keywordsPage === 1} onClick={() => setKeywordsPage(p => Math.max(1, p - 1))} />
+                    {[...Array(keywordsTotalPages)].map((_, i) => (
+                      <Pagination.Item key={i + 1} active={i + 1 === keywordsPage} onClick={() => setKeywordsPage(i + 1)}>
+                        {i + 1}
+                      </Pagination.Item>
+                    ))}
+                    <Pagination.Next disabled={keywordsPage === keywordsTotalPages} onClick={() => setKeywordsPage(p => Math.min(keywordsTotalPages, p + 1))} />
+                  </Pagination>
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Tab>
@@ -713,6 +821,19 @@ export default function AdminChat() {
                     ))}
                   </tbody>
                 </Table>
+              )}
+              {repliesTotalPages > 1 && (
+                <div className="d-flex justify-content-center mt-3">
+                  <Pagination>
+                    <Pagination.Prev disabled={repliesPage === 1} onClick={() => setRepliesPage(p => Math.max(1, p - 1))} />
+                    {[...Array(repliesTotalPages)].map((_, i) => (
+                      <Pagination.Item key={i + 1} active={i + 1 === repliesPage} onClick={() => setRepliesPage(i + 1)}>
+                        {i + 1}
+                      </Pagination.Item>
+                    ))}
+                    <Pagination.Next disabled={repliesPage === repliesTotalPages} onClick={() => setRepliesPage(p => Math.min(repliesTotalPages, p + 1))} />
+                  </Pagination>
+                </div>
               )}
             </Card.Body>
           </Card>
@@ -767,47 +888,124 @@ export default function AdminChat() {
       </Modal>
 
       {/* Product Search Modal */}
-      <Modal show={showProductModal} onHide={() => { setShowProductModal(false); setProductSearch(''); setSearchedProducts([]); }} size="lg">
+      <Modal show={showProductModal} onHide={() => { 
+        setShowProductModal(false); 
+        setProductSearch(''); 
+        setSearchedProducts([]); 
+        setProductCategory('');
+        setProductTargetGroup('');
+        setProductSort('');
+        setProductPage(1);
+      }} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>Tìm sản phẩm để gửi</Modal.Title>
+          <Modal.Title>Chọn sản phẩm để gửi ({productTotal} sản phẩm)</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <InputGroup className="mb-3">
-            <Form.Control
-              type="text"
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-              placeholder="Nhập tên sản phẩm..."
-              onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchProducts(); } }}
-            />
-            <Button onClick={handleSearchProducts} disabled={productSearchLoading}>
-              {productSearchLoading ? <Spinner size="sm" /> : 'Tìm'}
-            </Button>
-          </InputGroup>
+          {/* Search & Filters */}
+          <Row className="mb-3">
+            <Col md={12}>
+              <InputGroup className="mb-2">
+                <Form.Control
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Tìm theo tên sản phẩm..."
+                  onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchProducts(true); } }}
+                />
+                <Button onClick={() => handleSearchProducts(true)} disabled={productSearchLoading}>
+                  {productSearchLoading ? <Spinner size="sm" /> : 'Tìm'}
+                </Button>
+              </InputGroup>
+            </Col>
+          </Row>
+          
+          <Row className="mb-3">
+            <Col md={4}>
+              <Form.Select 
+                size="sm" 
+                value={productCategory} 
+                onChange={(e) => { setProductCategory(e.target.value); setProductPage(1); }}
+              >
+                <option value="">Tất cả danh mục</option>
+                <option value="Giày Thể Thao">Giày Thể Thao</option>
+                <option value="Giày Tây">Giày Tây</option>
+                <option value="Giày Sandal">Giày Sandal</option>
+                <option value="Giày Boot">Giày Boot</option>
+                <option value="Giày Lười">Giày Lười</option>
+              </Form.Select>
+            </Col>
+            <Col md={4}>
+              <Form.Select 
+                size="sm" 
+                value={productTargetGroup} 
+                onChange={(e) => { setProductTargetGroup(e.target.value); setProductPage(1); }}
+              >
+                <option value="">Tất cả đối tượng</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Unisex">Unisex</option>
+              </Form.Select>
+            </Col>
+            <Col md={4}>
+              <Form.Select 
+                size="sm" 
+                value={productSort} 
+                onChange={(e) => { setProductSort(e.target.value); setProductPage(1); }}
+              >
+                <option value="">Mặc định</option>
+                <option value="price-asc">Giá tăng dần</option>
+                <option value="price-desc">Giá giảm dần</option>
+                <option value="name">Tên A-Z</option>
+                <option value="newest">Mới nhất</option>
+              </Form.Select>
+            </Col>
+          </Row>
 
-          {searchedProducts.length > 0 ? (
-            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-              {searchedProducts.map(product => (
-                <Card key={product.ProductID} className="mb-2">
-                  <Card.Body className="d-flex align-items-center gap-3">
-                    <Image 
-                      src={product.DefaultImage || 'https://via.placeholder.com/80'} 
-                      style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }}
-                    />
-                    <div className="flex-grow-1">
-                      <h6 className="mb-1">{product.Name}</h6>
-                      <p className="mb-0 text-muted">{Number(product.Price).toLocaleString('vi-VN')}₫</p>
-                    </div>
-                    <Button variant="primary" size="sm" onClick={() => handleSendProduct(product)}>
-                      Gửi
-                    </Button>
-                  </Card.Body>
-                </Card>
-              ))}
-            </div>
-          ) : productSearch && !productSearchLoading ? (
+          {productSearchLoading ? (
+            <div className="text-center py-4"><Spinner /></div>
+          ) : searchedProducts.length > 0 ? (
+            <>
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {searchedProducts.map(product => (
+                  <Card key={product.ProductID} className="mb-2">
+                    <Card.Body className="d-flex align-items-center gap-3">
+                      <Image 
+                        src={product.DefaultImage || 'https://via.placeholder.com/80'} 
+                        style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }}
+                      />
+                      <div className="flex-grow-1">
+                        <h6 className="mb-1">{product.Name}</h6>
+                        <p className="mb-0 text-muted">{Number(product.Price).toLocaleString('vi-VN')}₫</p>
+                      </div>
+                      <Button variant="primary" size="sm" onClick={() => handleSendProduct(product)}>
+                        Gửi
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                ))}
+              </div>
+              
+              {productTotalPages > 1 && (
+                <div className="d-flex justify-content-center mt-3">
+                  <Pagination size="sm">
+                    <Pagination.Prev disabled={productPage === 1} onClick={() => setProductPage(p => Math.max(1, p - 1))} />
+                    {[...Array(Math.min(5, productTotalPages))].map((_, i) => {
+                      const pageNum = productPage <= 3 ? i + 1 : productPage - 2 + i;
+                      if (pageNum > productTotalPages) return null;
+                      return (
+                        <Pagination.Item key={pageNum} active={pageNum === productPage} onClick={() => setProductPage(pageNum)}>
+                          {pageNum}
+                        </Pagination.Item>
+                      );
+                    })}
+                    <Pagination.Next disabled={productPage === productTotalPages} onClick={() => setProductPage(p => Math.min(productTotalPages, p + 1))} />
+                  </Pagination>
+                </div>
+              )}
+            </>
+          ) : (
             <Alert variant="info">Không tìm thấy sản phẩm nào.</Alert>
-          ) : null}
+          )}
         </Modal.Body>
       </Modal>
     </Container>
