@@ -131,6 +131,13 @@ export default function ProductDetail() {
   // Chat với shop
   const [showChatWithProduct, setShowChatWithProduct] = useState(false);
 
+  // Review filters
+  const [reviewFilter, setReviewFilter] = useState({
+    rating: null, // null = all, 1-5 = specific rating
+    hasMedia: false,
+    sortBy: 'newest' // newest, oldest, highest, lowest
+  });
+
   // Lấy data sản phẩm
   useEffect(() => {
     if (id) {
@@ -293,7 +300,30 @@ export default function ProductDetail() {
     carouselRef.current?.scrollBy({ left: offset, behavior: "smooth" });
 
   const handleReviewPageChange = (page) => {
-    dispatch(fetchProductReviewsPage({ productId: id, page: page + 1 }));
+    dispatch(fetchProductReviewsPage({ 
+      productId: id, 
+      page: page + 1,
+      ...reviewFilter
+    }));
+  };
+
+  // Handle review filter changes
+  const handleReviewFilterChange = (filterType, value) => {
+    const newFilter = { ...reviewFilter };
+    if (filterType === 'rating') {
+      newFilter.rating = newFilter.rating === value ? null : value;
+    } else if (filterType === 'hasMedia') {
+      newFilter.hasMedia = !newFilter.hasMedia;
+    } else if (filterType === 'sortBy') {
+      newFilter.sortBy = value;
+    }
+    setReviewFilter(newFilter);
+    // Fetch with new filter, reset to page 1
+    dispatch(fetchProductReviewsPage({ 
+      productId: id, 
+      page: 1,
+      ...newFilter
+    }));
   };
 
   if (status === "loading") {
@@ -614,6 +644,51 @@ export default function ProductDetail() {
                         <h5 className="mb-0">
                           Khách hàng đánh giá ({reviewStats.totalReviews})
                         </h5>
+                      </div>
+
+                      {/* Review Filters */}
+                      <div className="mb-3 p-3 bg-light rounded">
+                        <div className="d-flex flex-wrap gap-2 align-items-center mb-2">
+                          <span className="fw-semibold small">Lọc theo:</span>
+                          <Button
+                            size="sm"
+                            variant={reviewFilter.rating === null ? "primary" : "outline-secondary"}
+                            onClick={() => handleReviewFilterChange('rating', null)}
+                          >
+                            Tất cả
+                          </Button>
+                          {[5, 4, 3, 2, 1].map((star) => (
+                            <Button
+                              key={star}
+                              size="sm"
+                              variant={reviewFilter.rating === star ? "primary" : "outline-secondary"}
+                              onClick={() => handleReviewFilterChange('rating', star)}
+                            >
+                              {star} <FaStar size={10} className="text-warning" />
+                              <span className="ms-1 small">({reviewStats.ratingSummary?.[star] || 0})</span>
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="d-flex flex-wrap gap-2 align-items-center">
+                          <Button
+                            size="sm"
+                            variant={reviewFilter.hasMedia ? "primary" : "outline-secondary"}
+                            onClick={() => handleReviewFilterChange('hasMedia')}
+                          >
+                            📷 Có hình ảnh/video ({reviewStats.withMedia || 0})
+                          </Button>
+                          <Form.Select
+                            size="sm"
+                            style={{ width: 'auto' }}
+                            value={reviewFilter.sortBy}
+                            onChange={(e) => handleReviewFilterChange('sortBy', e.target.value)}
+                          >
+                            <option value="newest">Mới nhất</option>
+                            <option value="oldest">Cũ nhất</option>
+                            <option value="highest">Đánh giá cao nhất</option>
+                            <option value="lowest">Đánh giá thấp nhất</option>
+                          </Form.Select>
+                        </div>
                       </div>
 
                       {reviews.length > 0 ? (

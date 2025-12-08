@@ -52,12 +52,21 @@ exports.getMyReviews = async (req, res) => {
         const limit = Math.max(1, parseInt(req.query.limit || '10', 10));
         const offset = (page - 1) * limit;
 
-        // Build include array - only add ReviewMedia if model exists
+        // Build include array - include ProductImage for default image
         const includeArray = [
             {
                 model: db.Product,
                 as: 'product',
-                attributes: ['ProductID', 'Name', 'DefaultImage']
+                attributes: ['ProductID', 'Name'],
+                include: [{
+                    model: db.ProductImage,
+                    as: 'images',
+                    attributes: ['ImageURL', 'IsDefault'],
+                    required: false,
+                    limit: 1,
+                    order: [['IsDefault', 'DESC'], ['ImageID', 'ASC']],
+                    separate: true
+                }]
             },
             {
                 model: db.Order,
@@ -100,9 +109,16 @@ exports.getMyReviews = async (req, res) => {
 
         const processedReviews = rows.map(review => {
             const plainReview = review.get({ plain: true });
-            if (plainReview.product?.DefaultImage && !plainReview.product.DefaultImage.startsWith('http')) {
-                plainReview.product.DefaultImage = `${BASE_URL}${plainReview.product.DefaultImage}`;
+            
+            // Get default image from product images
+            if (plainReview.product) {
+                const defaultImg = plainReview.product.images?.[0]?.ImageURL || '/images/placeholder-product.jpg';
+                plainReview.product.DefaultImage = defaultImg.startsWith('http') 
+                    ? defaultImg 
+                    : `${BASE_URL}${defaultImg}`;
+                delete plainReview.product.images; // Clean up
             }
+            
             if (plainReview.media) {
                 plainReview.media = plainReview.media.map(m => ({
                     ...m,
@@ -135,9 +151,52 @@ exports.getProductReviews = async (req, res) => {
         const page = Math.max(1, parseInt(req.query.page || '1', 10));
         const limit = Math.max(1, parseInt(req.query.limit || '5', 10));
         const offset = (page - 1) * limit;
+        
+        // Filter options
+        const ratingFilter = req.query.rating ? parseInt(req.query.rating, 10) : null;
+        const hasMedia = req.query.hasMedia === 'true';
+        const sortBy = req.query.sortBy || 'newest'; // newest, oldest, highest, lowest
+
+        // Build where clause
+        const whereClause = { ProductID: productId };
+        if (ratingFilter && ratingFilter >= 1 && ratingFilter <= 5) {
+            whereClause.Rating = ratingFilter;
+        }
+
+        // Build order clause
+        let orderClause = [['CreatedAt', 'DESC']]; // default: newest
+        if (sortBy === 'oldest') {
+            orderClause = [['CreatedAt', 'ASC']];
+        } else if (sortBy === 'highest') {
+            orderClause = [['Rating', 'DESC'], ['CreatedAt', 'DESC']];
+        } else if (sortBy === 'lowest') {
+            orderClause = [['Rating', 'ASC'], ['CreatedAt', 'DESC']];
+        }
+
+        // If filtering by hasMedia, we need to find ReviewIDs with media first
+        let reviewIdsWithMedia = null;
+        if (hasMedia) {
+            const mediaReviews = await db.ReviewMedia.findAll({
+                attributes: [[Sequelize.fn('DISTINCT', Sequelize.col('ReviewID')), 'ReviewID']],
+                raw: true
+            });
+            reviewIdsWithMedia = mediaReviews.map(r => r.ReviewID);
+            if (reviewIdsWithMedia.length > 0) {
+                whereClause.ReviewID = { [Op.in]: reviewIdsWithMedia };
+            } else {
+                // No reviews with media
+                return res.json({
+                    reviews: [],
+                    total: 0,
+                    page,
+                    limit,
+                    statistics: await getReviewStatistics(productId)
+                });
+            }
+        }
 
         const { count, rows } = await db.Review.findAndCountAll({
-            where: { ProductID: productId },
+            where: whereClause,
             include: [
                 {
                     model: db.User,
@@ -164,7 +223,7 @@ exports.getProductReviews = async (req, res) => {
             ],
             limit,
             offset,
-            order: [['CreatedAt', 'DESC']],
+            order: orderClause,
             distinct: true
         });
 
@@ -189,34 +248,12 @@ exports.getProductReviews = async (req, res) => {
             return plainReview;
         });
 
-        const stats = await db.Review.findAll({
-            where: { ProductID: productId },
-            attributes: [
-                'Rating',
-                [Sequelize.fn('COUNT', Sequelize.col('Rating')), 'count']
-            ],
-            group: ['Rating']
-        });
-
-        const totalReviews = stats.reduce((acc, stat) => acc + parseInt(stat.get('count'), 10), 0);
-        const totalRating = stats.reduce((acc, stat) => acc + (stat.Rating * parseInt(stat.get('count'), 10)), 0);
-        const averageRating = totalReviews > 0 ? (totalRating / totalReviews) : 0;
-
-        const ratingSummary = { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 };
-        stats.forEach(stat => {
-            ratingSummary[stat.Rating] = parseInt(stat.get('count'), 10);
-        });
-
         res.json({
             reviews: processedReviews,
             total: count,
             page,
             limit,
-            statistics: {
-                totalReviews,
-                averageRating: parseFloat(averageRating.toFixed(1)),
-                ratingSummary
-            }
+            statistics: await getReviewStatistics(productId)
         });
 
     } catch (error) {
@@ -224,6 +261,46 @@ exports.getProductReviews = async (req, res) => {
         res.status(500).json({ errors: [{ msg: 'Lỗi máy chủ' }] });
     }
 };
+
+// Helper function to get review statistics
+async function getReviewStatistics(productId) {
+    const stats = await db.Review.findAll({
+        where: { ProductID: productId },
+        attributes: [
+            'Rating',
+            [Sequelize.fn('COUNT', Sequelize.col('Rating')), 'count']
+        ],
+        group: ['Rating']
+    });
+
+    const totalReviews = stats.reduce((acc, stat) => acc + parseInt(stat.get('count'), 10), 0);
+    const totalRating = stats.reduce((acc, stat) => acc + (stat.Rating * parseInt(stat.get('count'), 10)), 0);
+    const averageRating = totalReviews > 0 ? (totalRating / totalReviews) : 0;
+
+    const ratingSummary = { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 };
+    stats.forEach(stat => {
+        ratingSummary[stat.Rating] = parseInt(stat.get('count'), 10);
+    });
+
+    // Count reviews with media
+    const withMedia = await db.ReviewMedia.count({
+        include: [{
+            model: db.Review,
+            as: 'review',
+            where: { ProductID: productId },
+            attributes: []
+        }],
+        distinct: true,
+        col: 'ReviewID'
+    });
+
+    return {
+        totalReviews,
+        averageRating: parseFloat(averageRating.toFixed(1)),
+        ratingSummary,
+        withMedia
+    };
+}
 
 /**
  * @route   POST /api/products/:productId/reviews

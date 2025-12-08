@@ -32,12 +32,16 @@ export const fetchProductAllData = createAsyncThunk(
     }
 );
 
-// THÊM THUNK MỚI: Lấy thêm trang đánh giá
+// THÊM THUNK MỚI: Lấy thêm trang đánh giá với filter
 export const fetchProductReviewsPage = createAsyncThunk(
     'productDetail/fetchReviewsPage',
-    async ({ productId, page, limit = 5 }, { rejectWithValue }) => {
+    async ({ productId, page, limit = 5, rating, hasMedia, sortBy }, { rejectWithValue }) => {
         try {
-            const { data } = await api.getProductReviewsAPI(productId, { page, limit });
+            const params = { page, limit };
+            if (rating) params.rating = rating;
+            if (hasMedia) params.hasMedia = 'true';
+            if (sortBy) params.sortBy = sortBy;
+            const { data } = await api.getProductReviewsAPI(productId, params);
             return data; // Trả về { reviews, total, page, limit, statistics }
         } catch (error) {
             return rejectWithValue(error.response.data);

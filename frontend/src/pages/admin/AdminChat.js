@@ -321,10 +321,12 @@ export default function AdminChat() {
   // Parse and render product card
   const renderProductCard = (message) => {
     // New JSON format: [PRODUCT_CARD]{"name":"..","price":"..","image":"..","link":"..","id":..}[/PRODUCT_CARD]
-    const jsonMatch = message.match(/\[PRODUCT_CARD\](\{.*?\})\[\/PRODUCT_CARD\]/s);
+    // Use more flexible regex to handle multiline and whitespace
+    const jsonMatch = message.match(/\[PRODUCT_CARD\]\s*([\s\S]*?)\s*\[\/PRODUCT_CARD\]/);
     if (jsonMatch) {
       try {
-        const product = JSON.parse(jsonMatch[1]);
+        const jsonStr = jsonMatch[1].trim();
+        const product = JSON.parse(jsonStr);
         return (
           <div className="admin-product-card">
             <div className="d-flex gap-2 p-2 bg-white rounded shadow-sm" style={{ maxWidth: 280 }}>
@@ -368,8 +370,10 @@ export default function AdminChat() {
             </div>
           </div>
         );
-      } catch {
-        return <span>{message}</span>;
+      } catch (e) {
+        console.error('Parse product card error:', e, jsonMatch[1]);
+        // If JSON parse fails, show raw text
+        return <span style={{ whiteSpace: 'pre-wrap' }}>{message}</span>;
       }
     }
 

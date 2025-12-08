@@ -3,6 +3,12 @@
 console.log('🚀 Server starting...');
 console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
 console.log('🔧 DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('📧 Email Config:', {
+  GMAIL_USER: process.env.GMAIL_USER ? `${process.env.GMAIL_USER.substring(0, 5)}...` : 'NOT SET',
+  GMAIL_PASS: process.env.GMAIL_PASS ? 'SET (hidden)' : 'NOT SET',
+  EMAIL_USER: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 5)}...` : 'NOT SET',
+  EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? 'SET (hidden)' : 'NOT SET'
+});
 
 // 🔐 Load environment variables FIRST (before any other imports)
 const dotenv = require("dotenv");
