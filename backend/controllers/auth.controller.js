@@ -247,6 +247,19 @@ exports.verifyEmail = async (req, res) => {
     user.EmailVerificationExpires = null;
     await user.save();
 
+    // 4. Gửi email chào mừng với voucher (chỉ gửi 1 lần)
+    if (!user.HasReceivedWelcomeVoucher) {
+      try {
+        await emailService.sendWelcomeEmail(user.Email, user.Username, WELCOME_VOUCHER_CODE);
+        user.HasReceivedWelcomeVoucher = true;
+        await user.save();
+        console.log(`✅ [Welcome Email] Sent to verified user: ${user.Email}`);
+      } catch (emailError) {
+        console.error(`❌ [Welcome Email] Error sending to ${user.Email}:`, emailError.message);
+        // Không làm hỏng flow
+      }
+    }
+
     res.json({ success: true, message: 'Email xác thực thành công! Bây giờ bạn có thể đăng nhập.' });
 
   } catch (error) {

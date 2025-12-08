@@ -75,6 +75,18 @@ export const fetchMyReviews = createAsyncThunk(
     }
 );
 
+export const fetchPendingReviews = createAsyncThunk(
+    'profile/fetchPendingReviews',
+    async (params, { rejectWithValue }) => {
+        try {
+            const response = await api.getPendingReviewsAPI(params);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response.data);
+        }
+    }
+);
+
 // === INITIAL STATE ===
 const initialState = {
     orders: {
@@ -110,6 +122,15 @@ const initialState = {
         error: null
     },
     myReviews: {
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+        status: 'idle',
+        error: null
+    },
+    pendingReviews: {
         data: [],
         total: 0,
         page: 1,
@@ -226,6 +247,23 @@ const profileSlice = createSlice({
             .addCase(fetchMyReviews.rejected, (state, action) => {
                 state.myReviews.status = 'failed';
                 state.myReviews.error = action.payload?.message || 'Lỗi tải đánh giá của bạn.';
+            })
+
+            // Pending Reviews
+            .addCase(fetchPendingReviews.pending, (state) => {
+                state.pendingReviews.status = 'loading';
+            })
+            .addCase(fetchPendingReviews.fulfilled, (state, action) => {
+                state.pendingReviews.status = 'succeeded';
+                state.pendingReviews.data = action.payload.items || [];
+                state.pendingReviews.total = action.payload.total || 0;
+                state.pendingReviews.page = action.payload.page || 1;
+                state.pendingReviews.limit = action.payload.limit || 10;
+                state.pendingReviews.totalPages = action.payload.totalPages || 1;
+            })
+            .addCase(fetchPendingReviews.rejected, (state, action) => {
+                state.pendingReviews.status = 'failed';
+                state.pendingReviews.error = action.payload?.message || 'Lỗi tải sản phẩm chờ đánh giá.';
             })
 
             // Reset toàn bộ khi logout

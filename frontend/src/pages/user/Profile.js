@@ -27,7 +27,7 @@ import {
 import {
   fetchUserOrders, fetchOrderDetail, cancelUserOrder,
   fetchPaginatedWishlist, fetchUserWalletVouchers, resetVoucherStatus,
-  fetchMyReviews
+  fetchMyReviews, fetchPendingReviews
 } from '../../redux/profileSlice';
 
 const PLACEHOLDER = `https://placehold.co/400x400/e2e8f0/64748b?text=No+Image`;
@@ -64,7 +64,8 @@ export default function Profile() {
     wishlist: wishlistState,      // { data: {items,total,page,pageSize}, status, error }
     orderDetail,                  // { data, status, error }
     userVouchers,                 // { data, status, error }
-    myReviews: myReviewsState     // { data, total, page, limit, totalPages, status, error }
+    myReviews: myReviewsState,    // { data, total, page, limit, totalPages, status, error }
+    pendingReviews: pendingReviewsState // { data, total, page, limit, totalPages, status, error }
   } = useSelector((state) => state.profile);
 
   const orders = orderState.data || [];
@@ -78,6 +79,18 @@ export default function Profile() {
   const wishlist = wishlistState.data || { items: [], total: 0, page: 1, pageSize: 8 };
   const myReviews = myReviewsState?.data || [];
   const myReviewsPagination = {
+    total: myReviewsState?.total || 0,
+    page: myReviewsState?.page || 1,
+    limit: myReviewsState?.limit || 10,
+    totalPages: myReviewsState?.totalPages || 1
+  };
+  const pendingReviews = pendingReviewsState?.data || [];
+  const pendingReviewsPagination = {
+    total: pendingReviewsState?.total || 0,
+    page: pendingReviewsState?.page || 1,
+    limit: pendingReviewsState?.limit || 10,
+    totalPages: pendingReviewsState?.totalPages || 1
+  };
     total: myReviewsState?.total || 0,
     page: myReviewsState?.page || 1,
     limit: myReviewsState?.limit || 10,
@@ -118,6 +131,8 @@ export default function Profile() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewingItem, setReviewingItem] = useState(null);
   const [reviewsPage, setReviewsPage] = useState(1);
+  const [pendingReviewsPage, setPendingReviewsPage] = useState(1);
+  const [activeReviewTab, setActiveReviewTab] = useState('pending'); // 'pending' or 'reviewed'
   const REVIEWS_PAGE_SIZE = 5;
 
   // Cache eligibility theo key `${orderId}_${productId}`
@@ -165,8 +180,12 @@ export default function Profile() {
   // Load my reviews when section = 'reviews' or page changes
   useEffect(() => {
     if (!user?.id || activeSection !== 'reviews') return;
-    dispatch(fetchMyReviews({ page: reviewsPage, limit: REVIEWS_PAGE_SIZE }));
-  }, [dispatch, user?.id, activeSection, reviewsPage]);
+    if (activeReviewTab === 'reviewed') {
+      dispatch(fetchMyReviews({ page: reviewsPage, limit: REVIEWS_PAGE_SIZE }));
+    } else {
+      dispatch(fetchPendingReviews({ page: pendingReviewsPage, limit: REVIEWS_PAGE_SIZE }));
+    }
+  }, [dispatch, user?.id, activeSection, activeReviewTab, reviewsPage, pendingReviewsPage]);
 
   // --- Form thông tin tài khoản ---
   const profileFormik = useFormik({
@@ -975,106 +994,226 @@ export default function Profile() {
               {/* Đánh giá của tôi */}
               {activeSection === 'reviews' && (
                 <>
-                  <h4>Đánh giá của tôi ({myReviewsPagination.total || 0})</h4>
-                  {myReviewsState?.status === 'loading' ? (
-                    <div className="text-center p-5"><Spinner /></div>
-                  ) : myReviews.length === 0 ? (
-                    <p className="text-muted">Bạn chưa có đánh giá nào. Hãy mua hàng và đánh giá sản phẩm!</p>
-                  ) : (
+                  <h4>Đánh giá của tôi</h4>
+                  
+                  {/* Tabs cho Chưa đánh giá / Đã đánh giá */}
+                  <div className="d-flex gap-2 mb-3 border-bottom pb-2">
+                    <Button
+                      variant={activeReviewTab === 'pending' ? 'primary' : 'outline-secondary'}
+                      size="sm"
+                      onClick={() => { setActiveReviewTab('pending'); setPendingReviewsPage(1); }}
+                    >
+                      Chưa đánh giá ({pendingReviewsPagination.total || 0})
+                    </Button>
+                    <Button
+                      variant={activeReviewTab === 'reviewed' ? 'primary' : 'outline-secondary'}
+                      size="sm"
+                      onClick={() => { setActiveReviewTab('reviewed'); setReviewsPage(1); }}
+                    >
+                      Đã đánh giá ({myReviewsPagination.total || 0})
+                    </Button>
+                  </div>
+
+                  {/* Tab: Chưa đánh giá */}
+                  {activeReviewTab === 'pending' && (
                     <>
-                      <ListGroup variant="flush">
-                        {myReviews.map((review) => {
-                          const productImg = review.product?.DefaultImage || PLACEHOLDER;
-                          return (
-                            <ListGroup.Item key={review.ReviewID} className="py-3">
-                              <div className="d-flex gap-3">
-                                <Link to={`/product/${review.ProductID}`}>
-                                  <Image
-                                    src={productImg}
-                                    alt={review.product?.Name}
-                                    style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }}
-                                    onError={(e) => { e.currentTarget.src = PLACEHOLDER; }}
-                                  />
-                                </Link>
-                                <div className="flex-grow-1">
-                                  <Link to={`/product/${review.ProductID}`} className="text-decoration-none">
-                                    <h6 className="mb-1 text-dark">{review.product?.Name || 'Sản phẩm'}</h6>
+                      {pendingReviewsState?.status === 'loading' ? (
+                        <div className="text-center p-5"><Spinner /></div>
+                      ) : pendingReviews.length === 0 ? (
+                        <Alert variant="info">
+                          <FaStar className="me-2" />
+                          Bạn đã đánh giá tất cả sản phẩm đã mua. Tuyệt vời!
+                        </Alert>
+                      ) : (
+                        <>
+                          <ListGroup variant="flush">
+                            {pendingReviews.map((item) => (
+                              <ListGroup.Item key={`${item.OrderID}-${item.OrderItemID}`} className="py-3">
+                                <div className="d-flex gap-3 align-items-center">
+                                  <Link to={`/product/${item.ProductID}`}>
+                                    <Image
+                                      src={item.ProductImage || PLACEHOLDER}
+                                      alt={item.ProductName}
+                                      style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }}
+                                      onError={(e) => { e.currentTarget.src = PLACEHOLDER; }}
+                                    />
                                   </Link>
-                                  {(review.Size || review.Color) && (
-                                    <small className="text-muted d-block mb-1">
-                                      {review.Size && `Size: ${review.Size}`}
-                                      {review.Size && review.Color && ' | '}
-                                      {review.Color && `Màu: ${review.Color}`}
+                                  <div className="flex-grow-1">
+                                    <Link to={`/product/${item.ProductID}`} className="text-decoration-none">
+                                      <h6 className="mb-1 text-dark">{item.ProductName}</h6>
+                                    </Link>
+                                    {(item.Size || item.Color) && (
+                                      <small className="text-muted d-block mb-1">
+                                        {item.Size && `Size: ${item.Size}`}
+                                        {item.Size && item.Color && ' | '}
+                                        {item.Color && `Màu: ${item.Color}`}
+                                      </small>
+                                    )}
+                                    <small className="text-muted d-block">
+                                      Đơn hàng: #{item.OrderID} | Ngày: {new Date(item.OrderDate).toLocaleDateString('vi-VN')}
                                     </small>
-                                  )}
-                                  <div className="mb-1">
-                                    {[...Array(5)].map((_, i) => (
-                                      <FaStar
-                                        key={i}
-                                        className={i < review.Rating ? 'text-warning' : 'text-muted'}
-                                        style={{ fontSize: 14 }}
-                                      />
-                                    ))}
-                                    <small className="text-muted ms-2">
-                                      {new Date(review.CreatedAt).toLocaleDateString('vi-VN')}
+                                    <small className="text-muted d-block">
+                                      SL: {item.Quantity} | Giá: {Number(item.Price).toLocaleString('vi-VN')}₫
                                     </small>
                                   </div>
-                                  {review.Comment && (
-                                    <p className="mb-1 small">{review.Comment}</p>
-                                  )}
-                                  {review.media?.length > 0 && (
-                                    <div className="d-flex gap-2 flex-wrap mt-2">
-                                      {review.media.map((m, idx) => (
-                                        m.IsVideo ? (
-                                          <video
-                                            key={idx}
-                                            src={m.MediaURL}
-                                            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
-                                            controls
-                                          />
-                                        ) : (
-                                          <Image
-                                            key={idx}
-                                            src={m.MediaURL}
-                                            style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
-                                          />
-                                        )
-                                      ))}
-                                    </div>
-                                  )}
-                                  <small className="text-muted d-block mt-1">
-                                    Đơn hàng: #{review.OrderID}
-                                  </small>
+                                  <Button
+                                    variant="warning"
+                                    size="sm"
+                                    onClick={() => {
+                                      setReviewingItem({
+                                        orderId: item.OrderID,
+                                        orderItemId: item.OrderItemID,
+                                        productId: item.ProductID,
+                                        productName: item.ProductName,
+                                        productImage: item.ProductImage,
+                                        size: item.Size,
+                                        color: item.Color
+                                      });
+                                      setShowReviewModal(true);
+                                    }}
+                                  >
+                                    <FaPen className="me-1" /> Đánh giá
+                                  </Button>
                                 </div>
-                              </div>
-                            </ListGroup.Item>
-                          );
-                        })}
-                      </ListGroup>
-
-                      {/* Pagination for Reviews */}
-                      {myReviewsPagination.totalPages > 1 && (
-                        <div className="d-flex justify-content-center mt-3">
-                          <Pagination>
-                            <Pagination.Prev
-                              onClick={() => setReviewsPage(p => Math.max(1, p - 1))}
-                              disabled={reviewsPage === 1}
-                            />
-                            {[...Array(myReviewsPagination.totalPages).keys()].map(i => (
-                              <Pagination.Item
-                                key={i + 1}
-                                active={i + 1 === reviewsPage}
-                                onClick={() => setReviewsPage(i + 1)}
-                              >
-                                {i + 1}
-                              </Pagination.Item>
+                              </ListGroup.Item>
                             ))}
-                            <Pagination.Next
-                              onClick={() => setReviewsPage(p => Math.min(myReviewsPagination.totalPages, p + 1))}
-                              disabled={reviewsPage === myReviewsPagination.totalPages}
-                            />
-                          </Pagination>
-                        </div>
+                          </ListGroup>
+
+                          {/* Pagination for Pending Reviews */}
+                          {pendingReviewsPagination.totalPages > 1 && (
+                            <div className="d-flex justify-content-center mt-3">
+                              <Pagination>
+                                <Pagination.Prev
+                                  onClick={() => setPendingReviewsPage(p => Math.max(1, p - 1))}
+                                  disabled={pendingReviewsPage === 1}
+                                />
+                                {[...Array(pendingReviewsPagination.totalPages).keys()].map(i => (
+                                  <Pagination.Item
+                                    key={i + 1}
+                                    active={i + 1 === pendingReviewsPage}
+                                    onClick={() => setPendingReviewsPage(i + 1)}
+                                  >
+                                    {i + 1}
+                                  </Pagination.Item>
+                                ))}
+                                <Pagination.Next
+                                  onClick={() => setPendingReviewsPage(p => Math.min(pendingReviewsPagination.totalPages, p + 1))}
+                                  disabled={pendingReviewsPage === pendingReviewsPagination.totalPages}
+                                />
+                              </Pagination>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {/* Tab: Đã đánh giá */}
+                  {activeReviewTab === 'reviewed' && (
+                    <>
+                      {myReviewsState?.status === 'loading' ? (
+                        <div className="text-center p-5"><Spinner /></div>
+                      ) : myReviews.length === 0 ? (
+                        <Alert variant="info">
+                          Bạn chưa có đánh giá nào. Hãy mua hàng và đánh giá sản phẩm!
+                        </Alert>
+                      ) : (
+                        <>
+                          <ListGroup variant="flush">
+                            {myReviews.map((review) => {
+                              const productImg = review.product?.DefaultImage || PLACEHOLDER;
+                              return (
+                                <ListGroup.Item key={review.ReviewID} className="py-3">
+                                  <div className="d-flex gap-3">
+                                    <Link to={`/product/${review.ProductID}`}>
+                                      <Image
+                                        src={productImg}
+                                        alt={review.product?.Name}
+                                        style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }}
+                                        onError={(e) => { e.currentTarget.src = PLACEHOLDER; }}
+                                      />
+                                    </Link>
+                                    <div className="flex-grow-1">
+                                      <Link to={`/product/${review.ProductID}`} className="text-decoration-none">
+                                        <h6 className="mb-1 text-dark">{review.product?.Name || 'Sản phẩm'}</h6>
+                                      </Link>
+                                      {(review.Size || review.Color) && (
+                                        <small className="text-muted d-block mb-1">
+                                          {review.Size && `Size: ${review.Size}`}
+                                          {review.Size && review.Color && ' | '}
+                                          {review.Color && `Màu: ${review.Color}`}
+                                        </small>
+                                      )}
+                                      <div className="mb-1">
+                                        {[...Array(5)].map((_, i) => (
+                                          <FaStar
+                                            key={i}
+                                            className={i < review.Rating ? 'text-warning' : 'text-muted'}
+                                            style={{ fontSize: 14 }}
+                                          />
+                                        ))}
+                                        <small className="text-muted ms-2">
+                                          {new Date(review.CreatedAt).toLocaleDateString('vi-VN')}
+                                        </small>
+                                      </div>
+                                      {review.Comment && (
+                                        <p className="mb-1 small">{review.Comment}</p>
+                                      )}
+                                      {review.media?.length > 0 && (
+                                        <div className="d-flex gap-2 flex-wrap mt-2">
+                                          {review.media.map((m, idx) => (
+                                            m.IsVideo ? (
+                                              <video
+                                                key={idx}
+                                                src={m.MediaURL}
+                                                style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
+                                                controls
+                                              />
+                                            ) : (
+                                              <Image
+                                                key={idx}
+                                                src={m.MediaURL}
+                                                style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
+                                              />
+                                            )
+                                          ))}
+                                        </div>
+                                      )}
+                                      <small className="text-muted d-block mt-1">
+                                        Đơn hàng: #{review.OrderID}
+                                      </small>
+                                    </div>
+                                  </div>
+                                </ListGroup.Item>
+                              );
+                            })}
+                          </ListGroup>
+
+                          {/* Pagination for Reviews */}
+                          {myReviewsPagination.totalPages > 1 && (
+                            <div className="d-flex justify-content-center mt-3">
+                              <Pagination>
+                                <Pagination.Prev
+                                  onClick={() => setReviewsPage(p => Math.max(1, p - 1))}
+                                  disabled={reviewsPage === 1}
+                                />
+                                {[...Array(myReviewsPagination.totalPages).keys()].map(i => (
+                                  <Pagination.Item
+                                    key={i + 1}
+                                    active={i + 1 === reviewsPage}
+                                    onClick={() => setReviewsPage(i + 1)}
+                                  >
+                                    {i + 1}
+                                  </Pagination.Item>
+                                ))}
+                                <Pagination.Next
+                                  onClick={() => setReviewsPage(p => Math.min(myReviewsPagination.totalPages, p + 1))}
+                                  disabled={reviewsPage === myReviewsPagination.totalPages}
+                                />
+                              </Pagination>
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}

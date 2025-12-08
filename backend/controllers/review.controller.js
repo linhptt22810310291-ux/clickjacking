@@ -41,6 +41,111 @@ const uploadReviewMedia = async (file) => {
 // =======================================================
 
 /**
+ * @route   GET /api/user/pending-reviews
+ * @desc    Lấy danh sách sản phẩm đã mua nhưng chưa đánh giá
+ * @access  Private
+ */
+exports.getPendingReviews = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const page = Math.max(1, parseInt(req.query.page || '1', 10));
+        const limit = Math.max(1, parseInt(req.query.limit || '10', 10));
+        const offset = (page - 1) * limit;
+
+        // Lấy tất cả OrderItems từ đơn hàng đã Delivered của user
+        const deliveredOrderItems = await db.OrderItem.findAll({
+            include: [
+                {
+                    model: db.Order,
+                    as: 'order',
+                    where: { 
+                        UserID: userId,
+                        Status: 'Delivered'
+                    },
+                    attributes: ['OrderID', 'OrderDate']
+                },
+                {
+                    model: db.ProductVariant,
+                    as: 'variant',
+                    attributes: ['VariantID', 'ProductID', 'Size', 'Color'],
+                    include: [{
+                        model: db.Product,
+                        as: 'product',
+                        attributes: ['ProductID', 'Name']
+                    }]
+                }
+            ],
+            attributes: ['OrderItemID', 'OrderID', 'VariantID', 'Quantity', 'Price']
+        });
+
+        // Lấy danh sách các review đã tồn tại của user
+        const existingReviews = await db.Review.findAll({
+            where: { UserID: userId },
+            attributes: ['ProductID', 'OrderID', 'OrderItemID']
+        });
+
+        // Tạo Set để check nhanh
+        const reviewedSet = new Set(
+            existingReviews.map(r => `${r.ProductID}-${r.OrderID}-${r.OrderItemID}`)
+        );
+
+        // Lọc những items chưa được đánh giá
+        const pendingItems = deliveredOrderItems.filter(item => {
+            const key = `${item.variant?.product?.ProductID}-${item.OrderID}-${item.OrderItemID}`;
+            return !reviewedSet.has(key);
+        });
+
+        // Phân trang
+        const total = pendingItems.length;
+        const paginatedItems = pendingItems.slice(offset, offset + limit);
+
+        // Format response
+        const formattedItems = await Promise.all(paginatedItems.map(async (item) => {
+            const product = item.variant?.product;
+            const productId = product?.ProductID;
+            
+            // Lấy hình ảnh sản phẩm
+            let defaultImage = '/images/placeholder-product.jpg';
+            if (productId) {
+                const productImage = await db.ProductImage.findOne({
+                    where: { ProductID: productId },
+                    order: [['IsDefault', 'DESC'], ['ImageID', 'ASC']]
+                });
+                if (productImage) {
+                    defaultImage = productImage.ImageURL.startsWith('http')
+                        ? productImage.ImageURL
+                        : `${BASE_URL}${productImage.ImageURL}`;
+                }
+            }
+
+            return {
+                OrderItemID: item.OrderItemID,
+                OrderID: item.OrderID,
+                OrderDate: item.order?.OrderDate,
+                ProductID: productId,
+                ProductName: product?.Name || 'Sản phẩm không xác định',
+                ProductImage: defaultImage,
+                Size: item.variant?.Size,
+                Color: item.variant?.Color,
+                Quantity: item.Quantity,
+                Price: item.Price
+            };
+        }));
+
+        res.json({
+            items: formattedItems,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        });
+    } catch (error) {
+        console.error('GET PENDING REVIEWS ERROR:', error);
+        res.status(500).json({ errors: [{ msg: 'Lỗi máy chủ' }] });
+    }
+};
+
+/**
  * @route   GET /api/user/my-reviews
  * @desc    Lấy danh sách đánh giá của user hiện tại
  * @access  Private

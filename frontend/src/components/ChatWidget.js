@@ -51,6 +51,12 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productSent, setProductSent] = useState(false); // Track if product context was sent
   
+  // Order inquiry states
+  const [showOrderSelector, setShowOrderSelector] = useState(false);
+  const [userOrders, setUserOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(true);
+  
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const user = useSelector(selectUser);
@@ -96,6 +102,27 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
       return () => clearTimeout(timer);
     }
   }, [productSearchTerm, showProductSelector, fetchProducts]);
+
+  // Fetch user orders for order inquiry
+  const fetchUserOrders = useCallback(async () => {
+    if (!user || !isAuthenticated) return;
+    setLoadingOrders(true);
+    try {
+      const { data } = await api.get('/profile/orders', { params: { limit: 10, page: 1 } });
+      setUserOrders(data.orders || []);
+    } catch (error) {
+      console.error('Fetch orders error:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, [user, isAuthenticated]);
+
+  // Load orders when order selector opens
+  useEffect(() => {
+    if (showOrderSelector && user) {
+      fetchUserOrders();
+    }
+  }, [showOrderSelector, user, fetchUserOrders]);
 
   // Start or load conversation
   const initConversation = useCallback(async (guestName = null, guestEmail = null) => {
@@ -252,8 +279,56 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
     
     setShowProductSelector(false);
     setSelectedProduct(null);
+    setShowQuickActions(false);
     handleSendMessage(null, productMessage);
   };
+
+  // Send order inquiry to chat
+  const handleSendOrderInquiry = (order, inquiryType = 'general') => {
+    const statusMap = {
+      'Pending': 'Chờ xác nhận',
+      'Confirmed': 'Đã xác nhận', 
+      'Shipped': 'Đang giao',
+      'Delivered': 'Đã giao',
+      'Cancelled': 'Đã hủy',
+      'PendingPayment': 'Chờ thanh toán'
+    };
+    
+    let message = '';
+    switch(inquiryType) {
+      case 'status':
+        message = `Tôi muốn kiểm tra trạng thái đơn hàng #${order.OrderID}. Trạng thái hiện tại: ${statusMap[order.Status] || order.Status}. Vui lòng cập nhật cho tôi!`;
+        break;
+      case 'shipping':
+        message = `Tôi muốn hỏi về vận chuyển đơn hàng #${order.OrderID}. ${order.TrackingCode ? `Mã vận đơn: ${order.TrackingCode}` : 'Chưa có mã vận đơn'}.`;
+        break;
+      case 'cancel':
+        message = `Tôi muốn yêu cầu hủy đơn hàng #${order.OrderID}. Tổng giá trị: ${Number(order.TotalAmount).toLocaleString('vi-VN')}₫. Lý do: `;
+        break;
+      case 'return':
+        message = `Tôi muốn yêu cầu đổi/trả hàng cho đơn #${order.OrderID}. Ngày đặt: ${new Date(order.OrderDate).toLocaleDateString('vi-VN')}. Lý do: `;
+        break;
+      default:
+        message = `[ORDER_CARD]
+{"orderId":${order.OrderID},"status":"${statusMap[order.Status] || order.Status}","total":"${Number(order.TotalAmount).toLocaleString('vi-VN')}₫","date":"${new Date(order.OrderDate).toLocaleDateString('vi-VN')}","tracking":"${order.TrackingCode || ''}"}
+[/ORDER_CARD]
+Tôi cần hỗ trợ về đơn hàng này.`;
+    }
+    
+    setShowOrderSelector(false);
+    setShowQuickActions(false);
+    handleSendMessage(null, message);
+  };
+
+  // Quick action handlers
+  const quickActions = [
+    { id: 'order_status', label: '📦 Kiểm tra đơn hàng', action: () => setShowOrderSelector(true), requireAuth: true },
+    { id: 'shipping', label: '🚚 Thông tin vận chuyển', action: () => handleSendMessage(null, 'Tôi muốn hỏi về chính sách vận chuyển và thời gian giao hàng.'), requireAuth: false },
+    { id: 'return', label: '🔄 Đổi/Trả hàng', action: () => handleSendMessage(null, 'Tôi muốn hỏi về chính sách đổi trả hàng.'), requireAuth: false },
+    { id: 'payment', label: '💳 Thanh toán', action: () => handleSendMessage(null, 'Tôi muốn hỏi về các phương thức thanh toán.'), requireAuth: false },
+    { id: 'product', label: '👟 Hỏi về sản phẩm', action: () => setShowProductSelector(true), requireAuth: false },
+    { id: 'other', label: '💬 Vấn đề khác', action: () => { setShowQuickActions(false); inputRef.current?.focus(); }, requireAuth: false },
+  ];
 
   // Request human support
   const handleRequestHuman = async () => {
@@ -313,6 +388,58 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
   // Check if message is a product card
   const isProductMessage = (message) => {
     return message.includes('[PRODUCT_CARD]') || message.includes('📦 Tôi muốn hỏi về sản phẩm');
+  };
+
+  // Check if message is an order card
+  const isOrderMessage = (message) => {
+    return message.includes('[ORDER_CARD]');
+  };
+
+  // Parse and render order card in message
+  const renderOrderCard = (message) => {
+    try {
+      const jsonMatch = message.match(/\[ORDER_CARD\]\s*([\s\S]*?)\s*\[\/ORDER_CARD\]/);
+      if (jsonMatch) {
+        const order = JSON.parse(jsonMatch[1]);
+        const remainingText = message.replace(/\[ORDER_CARD\][\s\S]*?\[\/ORDER_CARD\]/, '').trim();
+        return (
+          <div>
+            <div className="chat-order-card">
+              <div className="chat-order-card-header">
+                <FaBox className="me-2" />
+                Đơn hàng #{order.orderId}
+              </div>
+              <div className="chat-order-card-body">
+                <div className="chat-order-row">
+                  <span>Trạng thái:</span>
+                  <Badge bg={order.status === 'Đã giao' ? 'success' : order.status === 'Đã hủy' ? 'danger' : 'warning'}>
+                    {order.status}
+                  </Badge>
+                </div>
+                <div className="chat-order-row">
+                  <span>Tổng tiền:</span>
+                  <span className="text-danger fw-bold">{order.total}</span>
+                </div>
+                <div className="chat-order-row">
+                  <span>Ngày đặt:</span>
+                  <span>{order.date}</span>
+                </div>
+                {order.tracking && (
+                  <div className="chat-order-row">
+                    <span>Mã vận đơn:</span>
+                    <span className="text-primary">{order.tracking}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            {remainingText && <div className="mt-2">{remainingText}</div>}
+          </div>
+        );
+      }
+    } catch (e) {
+      console.error('Parse order card error:', e);
+    }
+    return message;
   };
 
   // Parse and render product card in message
@@ -494,6 +621,8 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
                         <div className="chat-message-content">
                           {msg.IsBlocked ? (
                             <em className="text-muted">[Tin nhắn đã bị lọc]</em>
+                          ) : isOrderMessage(msg.Message) ? (
+                            renderOrderCard(msg.Message)
                           ) : isProductMessage(msg.Message) ? (
                             renderProductCard(msg.Message)
                           ) : (
@@ -539,6 +668,113 @@ function ChatWidget({ productContext, orderContext, autoOpen = false }) {
                     </Button>
                   </div>
                 )}
+
+                {/* Quick Actions - Show when no messages or early in conversation */}
+                {!showGuestForm && messages.length <= 2 && showQuickActions && (
+                  <div className="chat-quick-actions">
+                    <div className="chat-quick-actions-title">Bạn cần hỗ trợ gì?</div>
+                    <div className="chat-quick-actions-grid">
+                      {quickActions.map(action => {
+                        if (action.requireAuth && !isAuthenticated) return null;
+                        return (
+                          <button
+                            key={action.id}
+                            type="button"
+                            className="chat-quick-action-btn"
+                            onClick={action.action}
+                          >
+                            {action.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Order Selector Modal */}
+                {showOrderSelector && (
+                  <div className="chat-selector-overlay">
+                    <div className="chat-selector-container">
+                      <div className="chat-selector-header">
+                        <span>Chọn đơn hàng</span>
+                        <Button variant="link" size="sm" onClick={() => setShowOrderSelector(false)}>
+                          <FaTimes />
+                        </Button>
+                      </div>
+                      <div className="chat-selector-body">
+                        {loadingOrders ? (
+                          <div className="text-center p-3"><Spinner size="sm" /></div>
+                        ) : userOrders.length === 0 ? (
+                          <p className="text-muted small text-center p-3">Bạn chưa có đơn hàng nào</p>
+                        ) : (
+                          <div className="chat-order-list">
+                            {userOrders.map(order => (
+                              <div key={order.OrderID} className="chat-order-item">
+                                <div className="chat-order-item-info">
+                                  <div className="fw-semibold">Đơn #{order.OrderID}</div>
+                                  <div className="small text-muted">
+                                    {new Date(order.OrderDate).toLocaleDateString('vi-VN')}
+                                  </div>
+                                  <Badge bg={
+                                    order.Status === 'Delivered' ? 'success' :
+                                    order.Status === 'Cancelled' ? 'danger' :
+                                    order.Status === 'Shipped' ? 'info' : 'warning'
+                                  } className="mt-1">
+                                    {order.Status === 'Pending' ? 'Chờ xác nhận' :
+                                     order.Status === 'Confirmed' ? 'Đã xác nhận' :
+                                     order.Status === 'Shipped' ? 'Đang giao' :
+                                     order.Status === 'Delivered' ? 'Đã giao' :
+                                     order.Status === 'Cancelled' ? 'Đã hủy' :
+                                     order.Status === 'PendingPayment' ? 'Chờ thanh toán' : order.Status}
+                                  </Badge>
+                                </div>
+                                <div className="chat-order-item-actions">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline-primary"
+                                    onClick={() => handleSendOrderInquiry(order, 'status')}
+                                    title="Kiểm tra trạng thái"
+                                  >
+                                    📦
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline-info"
+                                    onClick={() => handleSendOrderInquiry(order, 'shipping')}
+                                    title="Thông tin vận chuyển"
+                                  >
+                                    🚚
+                                  </Button>
+                                  {['Pending', 'Confirmed', 'PendingPayment'].includes(order.Status) && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline-danger"
+                                      onClick={() => handleSendOrderInquiry(order, 'cancel')}
+                                      title="Yêu cầu hủy"
+                                    >
+                                      ❌
+                                    </Button>
+                                  )}
+                                  {order.Status === 'Delivered' && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline-warning"
+                                      onClick={() => handleSendOrderInquiry(order, 'return')}
+                                      title="Đổi/trả hàng"
+                                    >
+                                      🔄
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <Form onSubmit={handleSendMessage} className="chat-input-form">
                   <Button 
                     variant="light" 

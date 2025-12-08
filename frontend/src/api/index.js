@@ -119,6 +119,9 @@ export const getPaginatedWishlistAPI = (params) =>
 export const getMyReviewsAPI = (params) =>
     api.get('/profile/my-reviews', { params });
 
+export const getPendingReviewsAPI = (params) =>
+    api.get('/profile/pending-reviews', { params });
+
 // --- Guest Orders ---
 export const lookupGuestOrdersAPI = (credentials) =>
     api.post('/guest-history/lookup', credentials);

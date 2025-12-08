@@ -528,3 +528,115 @@
   background: linear-gradient(135deg, #218838 0%, #1aa179 100%);
   color: white;
 }
+
+/* Quick Actions */
+.chat-quick-actions {
+  padding: 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.chat-quick-actions-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.chat-quick-actions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.chat-quick-action-btn {
+  padding: 8px 12px;
+  font-size: 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 20px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chat-quick-action-btn:hover {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+/* Order Card in Chat */
+.chat-order-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.chat-order-card-header {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.chat-order-card-body {
+  padding: 10px 12px;
+}
+
+.chat-order-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 12px;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.chat-order-row:last-child {
+  border-bottom: none;
+}
+
+/* Order Selector */
+.chat-order-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.chat-order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e9ecef;
+  transition: background 0.2s ease;
+}
+
+.chat-order-item:hover {
+  background: #f8f9fa;
+}
+
+.chat-order-item:last-child {
+  border-bottom: none;
+}
+
+.chat-order-item-info {
+  flex: 1;
+}
+
+.chat-order-item-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.chat-order-item-actions .btn {
+  padding: 4px 8px;
+  font-size: 14px;
+}
