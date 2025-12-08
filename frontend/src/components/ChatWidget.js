@@ -1006,27 +1006,63 @@ Tôi cần hỗ trợ về đơn hàng này.`;
               
               {/* Pagination */}
               {productTotalPages > 1 && (
-                <div className="d-flex justify-content-center mt-3">
+                <div className="d-flex justify-content-center align-items-center mt-3 gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline-secondary" 
+                    disabled={productPage === 1} 
+                    onClick={() => setProductPage(1)}
+                  >
+                    ««
+                  </Button>
                   <Button 
                     size="sm" 
                     variant="outline-secondary" 
                     disabled={productPage === 1} 
                     onClick={() => setProductPage(p => Math.max(1, p - 1))}
-                    className="me-2"
                   >
-                    ← Trước
+                    ‹
                   </Button>
-                  <span className="align-self-center mx-2">
-                    Trang {productPage}/{productTotalPages}
-                  </span>
+                  
+                  {/* Page numbers */}
+                  {Array.from({ length: Math.min(5, productTotalPages) }, (_, i) => {
+                    let pageNum;
+                    if (productTotalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (productPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (productPage >= productTotalPages - 2) {
+                      pageNum = productTotalPages - 4 + i;
+                    } else {
+                      pageNum = productPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        size="sm"
+                        variant={productPage === pageNum ? 'primary' : 'outline-secondary'}
+                        onClick={() => setProductPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  
                   <Button 
                     size="sm" 
                     variant="outline-secondary" 
                     disabled={productPage === productTotalPages} 
                     onClick={() => setProductPage(p => Math.min(productTotalPages, p + 1))}
-                    className="ms-2"
                   >
-                    Sau →
+                    ›
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline-secondary" 
+                    disabled={productPage === productTotalPages} 
+                    onClick={() => setProductPage(productTotalPages)}
+                  >
+                    »»
                   </Button>
                 </div>
               )}
