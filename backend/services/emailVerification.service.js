@@ -9,13 +9,18 @@ const db = require('../models');
  * Xác thực email người dùng
  */
 
-// Cấu hình email transporter
+// Cấu hình email transporter với connection pooling để tăng tốc
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
     user: process.env.EMAIL_USER || process.env.GMAIL_USER,
     pass: process.env.EMAIL_PASSWORD || process.env.GMAIL_PASS,
   },
+  pool: true,           // Sử dụng connection pool
+  maxConnections: 5,    // Tối đa 5 connections
+  maxMessages: 100,     // Tối đa 100 messages/connection
+  rateDelta: 1000,      // Giới hạn rate
+  rateLimit: 5,         // 5 messages/second
 });
 
 // Verify email connection on startup

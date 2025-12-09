@@ -49,9 +49,12 @@ if (USE_RESEND) {
             user: process.env.GMAIL_USER,
             pass: process.env.GMAIL_PASS,
         },
-        connectionTimeout: 60000, // 60 giây
-        greetingTimeout: 30000,
-        socketTimeout: 60000,
+        pool: true,              // Connection pooling để tăng tốc
+        maxConnections: 5,       // Tối đa 5 connections
+        maxMessages: 100,        // Tối đa 100 messages/connection
+        connectionTimeout: 30000, // 30 giây (giảm từ 60s)
+        greetingTimeout: 15000,   // 15 giây (giảm từ 30s)
+        socketTimeout: 30000,     // 30 giây (giảm từ 60s)
     });
     
     sendEmailFn = async (mailOptions) => {
