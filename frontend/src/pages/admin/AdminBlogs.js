@@ -58,6 +58,8 @@ export default function AdminBlogs() {
     const formik = useFormik({
         initialValues: { Title: '', Content: '', Author: '', IsActive: true },
         enableReinitialize: true,
+        validateOnChange: true,
+        validateOnBlur: true,
         validationSchema: Yup.object({
             Title: Yup.string().required('Tiêu đề là bắt buộc.'),
             Content: Yup.string().required('Nội dung là bắt buộc.'),

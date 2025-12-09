@@ -93,6 +93,8 @@ function AdminUsers() {
             UserID: null, Username: '', Email: '', Password: '', Role: 'user', FullName: '', Phone: '', Address: '', avatar: null, isEdit: false
         },
         validationSchema,
+        validateOnChange: true,
+        validateOnBlur: true,
         onSubmit: async (values) => {
             const formData = new FormData();
             Object.keys(values).forEach(key => {

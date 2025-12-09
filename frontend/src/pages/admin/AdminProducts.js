@@ -316,11 +316,34 @@ function AdminProducts() {
     return errors;
   };
 
-  // Handle Product Change (copy từ file 1)
+  // Handle Product Change - validate realtime
   const handleProductChange = (e) => {
     const { name, value } = e.target;
-    setCurrentProduct({ ...currentProduct, [name]: value });
-    // Bỏ validate realtime để tránh lag, chỉ validate khi submit
+    const newProduct = { ...currentProduct, [name]: value };
+    setCurrentProduct(newProduct);
+    
+    // Validate realtime - clear error khi nhập đúng
+    const errors = {};
+    if (name === 'name') {
+      if (!value.trim()) errors.name = 'Tên sản phẩm là bắt buộc.';
+    }
+    if (name === 'price') {
+      if (!value || isNaN(value) || Number(value) <= 0) errors.price = 'Giá phải lớn hơn 0.';
+    }
+    if (name === 'categoryId') {
+      if (!value) errors.categoryId = 'Vui lòng chọn danh mục.';
+    }
+    if (name === 'discountPercent') {
+      if (value && (isNaN(value) || Number(value) < 0 || Number(value) > 100)) errors.discountPercent = 'Giảm giá từ 0-100%.';
+    }
+    
+    // Cập nhật formErrors - xóa lỗi nếu đã nhập đúng
+    setFormErrors(prev => {
+      const newErrors = { ...prev };
+      if (!errors[name]) delete newErrors[name];
+      else newErrors[name] = errors[name];
+      return newErrors;
+    });
   };
   
   // SỬA: Xử lý Submit

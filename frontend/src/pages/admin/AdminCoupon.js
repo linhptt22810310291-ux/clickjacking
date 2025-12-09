@@ -63,6 +63,8 @@ export default function AdminCoupon() {
             ApplicableIDs: ''
         },
         enableReinitialize: true,
+        validateOnChange: true,
+        validateOnBlur: true,
         validationSchema: Yup.object({
             Code: Yup.string().required('Bắt buộc'),
             DiscountValue: Yup.number().min(1).required('Bắt buộc'),

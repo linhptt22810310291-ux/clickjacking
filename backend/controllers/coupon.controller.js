@@ -155,10 +155,11 @@ exports.validateCoupon = async (req, res) => {
         return res.json({ 
             success: true, 
             valid: true, 
-            message: "Áp dụng mã thành công!", // Thêm message
-            discount: discount, // SỐ TIỀN GIẢM ĐÃ ĐÚNG
-            code: coupon.Code // Trả về code để Redux lưu
-            // (Bạn có thể trả về thêm type và value nếu frontend cần)
+            message: "Áp dụng mã thành công!",
+            discount: discount,
+            code: coupon.Code,
+            type: coupon.DiscountType,
+            value: discountValue
         });
 
     } catch (error) {

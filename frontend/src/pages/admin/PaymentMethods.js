@@ -50,6 +50,8 @@ export default function PaymentMethods() {
             ConfigJson: ''
         },
         enableReinitialize: true,
+        validateOnChange: true,
+        validateOnBlur: true,
         validationSchema: Yup.object({
             Code: Yup.string().required('Mã là bắt buộc.'),
             Name: Yup.string().required('Tên là bắt buộc.'),

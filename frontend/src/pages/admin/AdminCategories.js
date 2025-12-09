@@ -30,6 +30,8 @@ export default function AdminCategories() {
     const formik = useFormik({
         initialValues: { Name: '', TargetGroup: '', Description: '' },
         enableReinitialize: true,
+        validateOnChange: true,
+        validateOnBlur: true,
         validationSchema: Yup.object({
             Name: Yup.string().required('Tên danh mục là bắt buộc.'),
             TargetGroup: Yup.string().required('Nhóm mục tiêu là bắt buộc.'),
