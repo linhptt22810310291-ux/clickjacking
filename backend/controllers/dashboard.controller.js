@@ -194,20 +194,22 @@ async function getRevenueStats() {
 async function getOrderStatusCounts() {
     const orderCounts = await db.Order.findAll({
         group: ['Status'],
-        attributes: ['Status', [Sequelize.fn('COUNT', 'OrderID'), 'count']],
+        attributes: ['Status', [Sequelize.fn('COUNT', Sequelize.col('OrderID')), 'count']],
         raw: true
     });
     const guestOrderCounts = await db.GuestOrder.findAll({
         group: ['Status'],
-        attributes: ['Status', [Sequelize.fn('COUNT', 'GuestOrderID'), 'count']],
+        attributes: ['Status', [Sequelize.fn('COUNT', Sequelize.col('GuestOrderID')), 'count']],
         raw: true
     });
 
     const statusMap = {};
     [...orderCounts, ...guestOrderCounts].forEach(row => {
-        statusMap[row.Status] = (statusMap[row.Status] || 0) + row.count;
+        // Parse count as integer
+        const cnt = parseInt(row.count, 10) || 0;
+        statusMap[row.Status] = (statusMap[row.Status] || 0) + cnt;
     });
-    return Object.entries(statusMap).map(([Status, count]) => ({ Status, count }));
+    return Object.entries(statusMap).map(([Status, count]) => ({ Status, count: parseInt(count, 10) }));
 }
 
 async function getRevenueChartData() {
